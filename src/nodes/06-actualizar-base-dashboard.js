@@ -30,6 +30,7 @@ for (const l of nuevos) {
   if (previo) {
     Object.assign(previo, {
       mensaje: l.mensaje,
+      pitch: l.pitch,
       followup: l.followup,
       origenMensaje: l.origenMensaje,
       estado: 'nuevo',
@@ -326,13 +327,14 @@ function cardHtml(l) {
     + '<p>' + esc(l.telefono) + ' &middot; ' + rating + ' &middot; ' + red + '</p>'
     + (l.direccion ? '<p>' + esc(l.direccion) + (l.mapsUrl ? ' &middot; <a target="_blank" href="' + esc(l.mapsUrl) + '">Maps</a>' : '') + '</p>' : '')
     + '</div>'
-    + '<details class="msj"><summary>Ver mensaje</summary>'
+    + '<details class="msj"><summary>Ver mensajes</summary>'
     + '<p class="texto">' + esc(l.mensaje || '') + '</p>'
-    + (l.followup ? '<p class="fup"><b>Follow-up:</b> ' + esc(l.followup) + '</p>' : '')
+    + (l.pitch ? '<p class="fup"><b>Pitch (cuando responde con interés):</b></p><p class="texto">' + esc(l.pitch) + '</p>' : '')
+    + (l.followup ? '<p class="fup"><b>Follow-up (a los 3 días):</b> ' + esc(l.followup) + '</p>' : '')
     + '</details>'
     + '<div class="acciones">'
     + '<button data-accion="wa" data-id="' + id + '" class="btn btn-wa">WhatsApp</button>'
-    + '<button data-accion="copiar-mensaje" data-id="' + id + '" class="btn btn-sm">Copiar mensaje</button>'
+    + '<button data-accion="copiar-pitch" data-id="' + id + '" class="btn btn-sm">Copiar pitch</button>'
     + '<button data-accion="copiar-followup" data-id="' + id + '" class="btn btn-sm">Copiar follow-up</button>'
     + '<select data-id="' + id + '">' + opciones + '</select>'
     + '</div>'
@@ -376,9 +378,9 @@ function render() {
 }
 
 function exportarCsv() {
-  var cab = ['nombre', 'telefono', 'celular', 'rubro', 'zona', 'estado', 'score', 'rating', 'resenas', 'direccion', 'red', 'fechaAgregado', 'mensaje', 'followup'];
+  var cab = ['nombre', 'telefono', 'celular', 'rubro', 'zona', 'estado', 'score', 'rating', 'resenas', 'direccion', 'red', 'fechaAgregado', 'mensaje', 'pitch', 'followup'];
   var filas = DATA.map(function (l) {
-    return [l.nombre, l.telefono, l.esCelular ? 'si' : 'no', l.rubro, l.zona, l.estado, l.score, l.rating, l.resenas, l.direccion, l.red, l.fechaAgregado, l.mensaje, l.followup]
+    return [l.nombre, l.telefono, l.esCelular ? 'si' : 'no', l.rubro, l.zona, l.estado, l.score, l.rating, l.resenas, l.direccion, l.red, l.fechaAgregado, l.mensaje, l.pitch, l.followup]
       .map(function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; })
       .join(';');
   });
@@ -400,6 +402,8 @@ document.getElementById('cards').addEventListener('click', function (ev) {
     if (l.estado === 'nuevo') setEstado(leadId(l), 'enviado');
   } else if (accion === 'copiar-mensaje') {
     copiar(l.mensaje || '', el);
+  } else if (accion === 'copiar-pitch') {
+    copiar(l.pitch || '', el);
   } else if (accion === 'copiar-followup') {
     copiar(l.followup || '', el);
   }

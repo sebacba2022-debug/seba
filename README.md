@@ -94,6 +94,9 @@ se regenera (los datos no cambiaron; el panel viejo sigue siendo válido).
 3. **Configurar el nodo Config**:
    - `placesApiKey`: ver [docs/google-places-setup.md](docs/google-places-setup.md).
    - `geminiApiKey`: tu key de Google AI Studio.
+   - `nombreVendedor`: tu nombre, con el que se firman todos los mensajes.
+   - `ofertaDetalle`: la oferta en tus palabras (precio, promo, qué incluye); el prompt de
+     ventas la usa tal cual, así que si cambiás el precio lo cambiás acá y listo.
    - `zonas`: array JSON de textos de búsqueda, ej. `["Córdoba Capital, Córdoba, Argentina", "Villa Allende, Córdoba, Argentina"]`.
    - `rubros`: array JSON `[{"rubro":"peluquería","prioritario":true}, ...]`.
    - `maxLeads`, `diasMinimos`, rutas de archivos.

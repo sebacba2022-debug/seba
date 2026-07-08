@@ -36,6 +36,7 @@ const configMock = {
   placesApiKey: 'clave-de-prueba',
   geminiApiKey: 'clave-de-prueba',
   nombreVendedor: 'Seba',
+  ofertaDetalle: 'Landing page profesional por $170.000 ARS (promo de lanzamiento), seña 50%, entrega 48hs, demo gratis antes de pagar.',
   zonas: '["Córdoba Capital, Córdoba, Argentina"]',
   rubros: '[{"rubro":"peluquería","prioritario":true},{"rubro":"gimnasio","prioritario":false}]',
   maxLeads: 15,
@@ -129,6 +130,8 @@ function testPipeline() {
   assert.strictEqual(prompt[0].json.totalLeads, 2);
   assert.ok(prompt[0].json.prompt.includes('Peluquería Tota'));
   assert.ok(prompt[0].json.prompt.includes('Sos Seba'), 'el prompt presenta al vendedor por nombre');
+  assert.ok(prompt[0].json.prompt.includes('promo de lanzamiento'), 'el prompt usa la oferta del Config');
+  assert.ok(prompt[0].json.prompt.includes('"pitch"'), 'el prompt pide el pitch de venta');
 
   // 5a. Asignar mensajes con respuesta buena de Gemini
   const geminiOk = [{
@@ -145,6 +148,8 @@ function testPipeline() {
   }, geminiOk);
   assert.strictEqual(conMensajes[0].json.origenMensaje, 'gemini');
   assert.ok(conMensajes[0].json.mensaje.includes('Mensaje IA para Tota'));
+  assert.ok(conMensajes[0].json.pitch.length > 100, 'el pitch existe (fallback si Gemini no lo dio)');
+  assert.ok(conMensajes[0].json.pitch.includes('Peluquería Tota'), 'el pitch fallback personaliza el nombre');
 
   // 5b. Asignar mensajes con Gemini caído -> fallback
   const conFallback = ejecutar(codigo.asignarMensajes, {
@@ -153,7 +158,9 @@ function testPipeline() {
   }, [{ json: { error: 'cuota agotada' } }]);
   assert.strictEqual(conFallback[0].json.origenMensaje, 'fallback');
   assert.ok(conFallback[0].json.mensaje.includes('Peluquería Tota'), 'la plantilla personaliza el nombre');
-  assert.ok(conFallback[0].json.mensaje.includes('Soy Seba'), 'la plantilla firma con el nombre del vendedor');
+  assert.ok(conFallback[0].json.mensaje.includes('Soy Seba') || conFallback[0].json.mensaje.includes('Seba,'), 'la plantilla firma con el nombre del vendedor');
+  assert.ok(conFallback[0].json.mensaje.includes('4.6'), 'la plantilla usa el mérito real (rating) del lead');
+  assert.ok(conFallback[0].json.pitch.includes('NO es'), 'el pitch fallback incluye la honestidad sobre lo que no es');
 
   // 5c. Mensaje de Gemini con placeholder sin completar -> se rechaza y entra fallback
   const geminiConPlaceholder = [{
@@ -185,6 +192,7 @@ function testPipeline() {
   assert.ok(!html.includes('__DATA__'), 'placeholder de datos reemplazado');
   assert.ok(!html.includes('__WEBHOOK_ESTADO__'), 'placeholder de webhook reemplazado');
   assert.ok(html.includes('var DATA = ['), 'snapshot embebido');
+  assert.ok(html.includes('copiar-pitch'), 'el panel tiene el botón de copiar pitch');
   // Chequeo de sintaxis del JS del dashboard (solo parseo, no ejecución)
   const inicio = html.lastIndexOf('<script>') + '<script>'.length;
   const fin = html.lastIndexOf('</script>');
@@ -266,6 +274,7 @@ function armarWorkflow() {
       ['placesApiKey', 'PEGAR_API_KEY_DE_GOOGLE_PLACES', 'string'],
       ['geminiApiKey', 'PEGAR_API_KEY_DE_GEMINI', 'string'],
       ['nombreVendedor', 'Seba', 'string'],
+      ['ofertaDetalle', 'Landing page profesional por $170.000 ARS (precio promocional de lanzamiento). Seña del 50% y entrega en 48 horas. Incluye botón de WhatsApp para turnos y consultas, y queda lista para aparecer en Google. Antes de pagar nada, el negocio ve una demo real de su propia web.', 'string'],
       ['zonas', '["Córdoba Capital, Córdoba, Argentina"]', 'string'],
       ['rubros', '[{"rubro":"peluquería","prioritario":true},{"rubro":"barbería","prioritario":true},{"rubro":"centro de estética","prioritario":true},{"rubro":"gimnasio","prioritario":false},{"rubro":"veterinaria","prioritario":false}]', 'string'],
       ['maxLeads', 15, 'number'],
