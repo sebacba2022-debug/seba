@@ -35,6 +35,7 @@ const codigo = {
 const configMock = {
   placesApiKey: 'clave-de-prueba',
   geminiApiKey: 'clave-de-prueba',
+  nombreVendedor: 'Seba',
   zonas: '["Córdoba Capital, Córdoba, Argentina"]',
   rubros: '[{"rubro":"peluquería","prioritario":true},{"rubro":"gimnasio","prioritario":false}]',
   maxLeads: 15,
@@ -124,31 +125,52 @@ function testPipeline() {
   assert.strictEqual(conScore[1].json.score, 6, 'prioritario+instagram: 1+3+2');
 
   // 4. Prompt
-  const prompt = ejecutar(codigo.armarPrompt, {}, conScore);
+  const prompt = ejecutar(codigo.armarPrompt, { Config: nodoDe([{ json: configMock }]) }, conScore);
   assert.strictEqual(prompt[0].json.totalLeads, 2);
   assert.ok(prompt[0].json.prompt.includes('Peluquería Tota'));
+  assert.ok(prompt[0].json.prompt.includes('Sos Seba'), 'el prompt presenta al vendedor por nombre');
 
   // 5a. Asignar mensajes con respuesta buena de Gemini
   const geminiOk = [{
     json: {
       candidates: [{ content: { parts: [{ text: JSON.stringify([
-        { id: 'p1', mensaje: 'Mensaje IA para Tota', followup: 'Follow IA Tota' },
-        { id: 'p3', mensaje: 'Mensaje IA para Luna', followup: 'Follow IA Luna' },
+        { id: 'p1', mensaje: 'Mensaje IA para Tota: hola, soy Seba de Impulso Web. Con las reseñas que tienen, el que las googlea y no encuentra página se va con otra pelu. ¿Les muestro una demo gratis de su web?', followup: 'Follow IA Tota: hola de nuevo, te dejo la demo pendiente, es gratis y la ves en dos minutos. ¿Te la mando?' },
+        { id: 'p3', mensaje: 'Mensaje IA para Luna: hola, soy Seba de Impulso Web. Vi que se mueven por Instagram pero sin página propia, y el que googlea no las encuentra. Landing en 48hs, demo gratis antes. ¿Se la muestro?', followup: 'Follow IA Luna: buenas! les escribí hace unos días, la demo sigue gratis y sin compromiso. ¿La ven?' },
       ]) }] } }],
     },
   }];
   const conMensajes = ejecutar(codigo.asignarMensajes, {
+    Config: nodoDe([{ json: configMock }]),
     'Calcular score y ordenar': nodoDe(conScore),
   }, geminiOk);
   assert.strictEqual(conMensajes[0].json.origenMensaje, 'gemini');
-  assert.strictEqual(conMensajes[0].json.mensaje, 'Mensaje IA para Tota');
+  assert.ok(conMensajes[0].json.mensaje.includes('Mensaje IA para Tota'));
 
   // 5b. Asignar mensajes con Gemini caído -> fallback
   const conFallback = ejecutar(codigo.asignarMensajes, {
+    Config: nodoDe([{ json: configMock }]),
     'Calcular score y ordenar': nodoDe(conScore),
   }, [{ json: { error: 'cuota agotada' } }]);
   assert.strictEqual(conFallback[0].json.origenMensaje, 'fallback');
   assert.ok(conFallback[0].json.mensaje.includes('Peluquería Tota'), 'la plantilla personaliza el nombre');
+  assert.ok(conFallback[0].json.mensaje.includes('Soy Seba'), 'la plantilla firma con el nombre del vendedor');
+
+  // 5c. Mensaje de Gemini con placeholder sin completar -> se rechaza y entra fallback
+  const geminiConPlaceholder = [{
+    json: {
+      candidates: [{ content: { parts: [{ text: JSON.stringify([
+        { id: 'p1', mensaje: '¡Hola Peluquería Tota! Soy [Tu Nombre] de Impulso Web. Armamos una oferta especial de landing page profesional para que consigas más clientes que te buscan en Google todos los días.', followup: 'Hola de nuevo!' },
+        { id: 'p3', mensaje: 'Hola Estética Luna, soy Seba de Impulso Web. Vi que se mueven por Instagram pero no tienen página propia, y el que las googlea no las encuentra. Landing profesional en 48hs por $170.000, con demo gratis de su propia web antes de pagar nada. ¿Se la muestro?', followup: 'Buenas! Les escribí hace unos días por la página de Estética Luna. La demo es gratis y la ven en 2 minutos. ¿Se la mando?' },
+      ]) }] } }],
+    },
+  }];
+  const conControl = ejecutar(codigo.asignarMensajes, {
+    Config: nodoDe([{ json: configMock }]),
+    'Calcular score y ordenar': nodoDe(conScore),
+  }, geminiConPlaceholder);
+  assert.strictEqual(conControl[0].json.origenMensaje, 'fallback', 'el mensaje con [Tu Nombre] se descarta');
+  assert.ok(!conControl[0].json.mensaje.includes('['), 'el texto final sale sin corchetes');
+  assert.strictEqual(conControl[1].json.origenMensaje, 'gemini', 'el mensaje sano se conserva');
 
   // 6. Actualizar base y dashboard (primera corrida)
   const resultado = ejecutar(codigo.actualizarBase, {
@@ -243,6 +265,7 @@ function armarWorkflow() {
     nodoSet('n03', 'Config', [220, 100], [
       ['placesApiKey', 'PEGAR_API_KEY_DE_GOOGLE_PLACES', 'string'],
       ['geminiApiKey', 'PEGAR_API_KEY_DE_GEMINI', 'string'],
+      ['nombreVendedor', 'Seba', 'string'],
       ['zonas', '["Córdoba Capital, Córdoba, Argentina"]', 'string'],
       ['rubros', '[{"rubro":"peluquería","prioritario":true},{"rubro":"barbería","prioritario":true},{"rubro":"centro de estética","prioritario":true},{"rubro":"gimnasio","prioritario":false},{"rubro":"veterinaria","prioritario":false}]', 'string'],
       ['maxLeads', 15, 'number'],

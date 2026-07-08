@@ -60,48 +60,54 @@
             },
             {
               "id": "n03-2",
+              "name": "nombreVendedor",
+              "value": "Seba",
+              "type": "string"
+            },
+            {
+              "id": "n03-3",
               "name": "zonas",
               "value": "[\"Córdoba Capital, Córdoba, Argentina\"]",
               "type": "string"
             },
             {
-              "id": "n03-3",
+              "id": "n03-4",
               "name": "rubros",
               "value": "[{\"rubro\":\"peluquería\",\"prioritario\":true},{\"rubro\":\"barbería\",\"prioritario\":true},{\"rubro\":\"centro de estética\",\"prioritario\":true},{\"rubro\":\"gimnasio\",\"prioritario\":false},{\"rubro\":\"veterinaria\",\"prioritario\":false}]",
               "type": "string"
             },
             {
-              "id": "n03-4",
+              "id": "n03-5",
               "name": "maxLeads",
               "value": 15,
               "type": "number"
             },
             {
-              "id": "n03-5",
+              "id": "n03-6",
               "name": "diasMinimos",
               "value": 30,
               "type": "number"
             },
             {
-              "id": "n03-6",
+              "id": "n03-7",
               "name": "rutaBase",
               "value": "C:/ImpulsoWeb/leads_db.json",
               "type": "string"
             },
             {
-              "id": "n03-7",
+              "id": "n03-8",
               "name": "rutaDashboard",
               "value": "C:/ImpulsoWeb/dashboard.html",
               "type": "string"
             },
             {
-              "id": "n03-8",
+              "id": "n03-9",
               "name": "webhookEstadoUrl",
               "value": "http://localhost:5678/webhook/impulso-estado",
               "type": "string"
             },
             {
-              "id": "n03-9",
+              "id": "n03-10",
               "name": "webhookLeadsUrl",
               "value": "http://localhost:5678/webhook/impulso-leads",
               "type": "string"
@@ -268,7 +274,7 @@
         100
       ],
       "parameters": {
-        "jsCode": "// Arma UN solo prompt con todos los leads (una única llamada a Gemini\n// para esquivar el rate limit del free tier).\nconst leads = $input.all().map((i) => i.json);\n\nconst listado = leads\n  .map((l) => JSON.stringify({\n    id: l.placeId,\n    nombre: l.nombre,\n    rubro: l.rubro,\n    zona: l.zona,\n    rating: l.rating,\n    resenas: l.resenas,\n    red: l.red,\n    recontacto: !!l.recontacto,\n  }))\n  .join('\\n');\n\nconst prompt = [\n  'Sos vendedor senior de Impulso Web, una agencia de diseño web de Córdoba, Argentina.',\n  'Oferta: landing page profesional por $170.000 ARS, seña del 50%, entrega en 48 horas. Antes de cobrar nada, al prospecto se le muestra una DEMO REAL de su propia web ya armada.',\n  '',\n  'Para CADA lead del listado generá dos textos para WhatsApp:',\n  '1. \"mensaje\": primer contacto en frío, de 350 a 550 caracteres. Debe: saludar nombrando al negocio, mostrar que conocés su rubro con UN dolor concreto y creíble (ej.: la gente busca su rubro en Google y no aparecen, pierden turnos por responder tarde, dependen solo del boca a boca o de Instagram), presentar la oferta con precio y entrega en 48hs, ofrecer una demo gratis de su propia web sin compromiso, y cerrar con UNA pregunta fácil de responder. NO incluyas links en este primer mensaje.',\n  '2. \"followup\": recordatorio de 2 o 3 líneas para mandar a los 3 días si no respondió. Amable, sin presionar, reforzando que la demo es gratis.',\n  '',\n  'Tono: argentino cordobés natural, cercano y profesional. Voseo. Máximo 1 emoji por texto. Nada de \"estimado\", nada de lenguaje corporativo, nada de promesas irreales (no prometas \"primer lugar en Google\").',\n  'Si \"recontacto\" es true, el mensaje tiene que reconocer brevemente que ya le escribiste hace un tiempo y traer una novedad (ej.: \"te escribí hace unas semanas, ahora tengo la demo de tu web lista para mostrarte\").',\n  'Si \"red\" es instagram o facebook, mencioná que ya tienen presencia ahí y que la web la potencia (turnos, catálogo, aparecer en Google).',\n  '',\n  'Respondé SOLO con un array JSON válido, sin markdown ni texto extra, con este formato exacto:',\n  '[{\"id\":\"<id del lead>\",\"mensaje\":\"...\",\"followup\":\"...\"}]',\n  '',\n  'Leads (uno por línea, en JSON):',\n  listado,\n].join('\\n');\n\nreturn [{ json: { prompt, totalLeads: leads.length } }];\n"
+        "jsCode": "// Arma UN solo prompt con todos los leads (una única llamada a Gemini\n// para esquivar el rate limit del free tier).\nconst config = $('Config').first().json;\nconst vendedor = String(config.nombreVendedor || 'Seba').trim();\n\nconst leads = $input.all().map((i) => i.json);\n\nconst listado = leads\n  .map((l) => JSON.stringify({\n    id: l.placeId,\n    nombre: l.nombre,\n    rubro: l.rubro,\n    zona: l.zona,\n    rating: l.rating,\n    resenas: l.resenas,\n    red: l.red,\n    recontacto: !!l.recontacto,\n  }))\n  .join('\\n');\n\nconst prompt = [\n  'Sos ' + vendedor + ', vendedor de Impulso Web, una agencia de diseño web de Córdoba, Argentina.',\n  'Oferta: landing page profesional por $170.000 ARS, seña del 50%, entrega en 48 horas. Antes de cobrar nada, al prospecto se le muestra una DEMO REAL de su propia web ya armada.',\n  '',\n  'Para CADA lead del listado generá dos textos para WhatsApp:',\n  '1. \"mensaje\": primer contacto en frío, de 300 a 500 caracteres. Debe: saludar nombrando al negocio, mostrar que conocés su rubro con UN dolor concreto y creíble (ej.: la gente busca su rubro en Google y no aparecen, pierden turnos por responder tarde, dependen solo del boca a boca o de Instagram), presentar la oferta con precio y entrega en 48hs, ofrecer una demo gratis de su propia web sin compromiso, y cerrar con UNA pregunta fácil de responder.',\n  '2. \"followup\": recordatorio de 2 o 3 líneas para mandar a los 3 días si no respondió. Amable, sin presionar, reforzando que la demo es gratis.',\n  '',\n  'REGLAS DE ESTILO (obligatorias, un texto que las viole se descarta):',\n  '- Presentate con tu nombre real: \"' + vendedor + '\". TERMINANTEMENTE PROHIBIDO usar placeholders o corchetes tipo [Tu Nombre], [Negocio], {{nombre}} o similares: cada texto tiene que salir 100% listo para enviar, con todos los datos reales del lead ya puestos.',\n  '- Escribí como una persona real tipeando un WhatsApp, no como una publicidad. Prohibidas las muletillas de vendedor: \"¿verdad?\", \"¿no es cierto?\", \"oferta especial\", \"imperdible\", \"única oportunidad\", \"geniales\".',\n  '- Variá los arranques: los mensajes NO pueden empezar todos igual (nada de \"¡Hola X! ¿Cómo andamos?\" repetido en serie).',\n  '- Usá los datos concretos del lead cuando sumen: si tiene 4.9 estrellas y 300 reseñas, nombralo como mérito real (\"con las reseñas que tienen, el que los googlea y no encuentra una página se va con otro\").',\n  '- Tono argentino cordobés natural, voseo, frases cortas. Máximo 1 emoji por texto, y puede ser ninguno. Nada de \"estimado\" ni lenguaje corporativo. No prometas resultados irreales (nunca \"primer lugar en Google\").',\n  '- Sin links en el primer mensaje.',\n  '- Si \"recontacto\" es true, reconocé brevemente que ya le escribiste hace un tiempo y traé una novedad (ej.: \"te escribí hace unas semanas, ahora tengo la demo de tu web lista\").',\n  '- Si \"red\" es instagram o facebook, mencioná que ya tienen presencia ahí y que la web la potencia (turnos, catálogo, aparecer en Google).',\n  '',\n  'Respondé SOLO con un array JSON válido, sin markdown ni texto extra, con este formato exacto:',\n  '[{\"id\":\"<id del lead>\",\"mensaje\":\"...\",\"followup\":\"...\"}]',\n  '',\n  'Leads (uno por línea, en JSON):',\n  listado,\n].join('\\n');\n\nreturn [{ json: { prompt, totalLeads: leads.length } }];\n"
       }
     },
     {
@@ -313,7 +319,7 @@
         100
       ],
       "parameters": {
-        "jsCode": "// Parsea la respuesta de Gemini y asigna mensaje + follow-up a cada lead.\n// Si Gemini falló o devolvió algo raro, entran las plantillas rotativas: la corrida nunca se cae.\nconst leads = $('Calcular score y ordenar').all().map((i) => ({ ...i.json }));\n\nconst generados = {};\ntry {\n  const respuesta = $input.first().json;\n  const texto = respuesta.candidates[0].content.parts[0].text;\n  const limpio = texto.trim().replace(/^```[a-z]*\\n?/i, '').replace(/\\n?```$/, '');\n  for (const m of JSON.parse(limpio)) {\n    if (m && m.id) generados[m.id] = m;\n  }\n} catch (e) {\n  // Gemini caído, sin cuota o respuesta no parseable: siguen las plantillas.\n}\n\nconst plantillas = [\n  (l) => ({\n    mensaje: `Hola, ¿hablo con ${l.nombre}? Te escribo de Impulso Web, acá de Córdoba. Hoy la mayoría busca \"${l.rubro}\" en Google antes de decidir, y si no tenés página ese cliente termina en otro lado. Hacemos landing pages profesionales en 48hs por $170.000, con seña del 50%. Antes de que pagues nada te armo una demo de tu web para que la veas, gratis y sin compromiso. ¿Te la paso?`,\n    followup: `Hola! Te escribí hace unos días por la web de ${l.nombre}. Te dejo la propuesta abierta: la demo es gratis y sin compromiso. Si querés verla, avisame y te la mando 👍`,\n  }),\n  (l) => ({\n    mensaje: `Buenas! ¿Cómo andan en ${l.nombre}? Soy de Impulso Web, una agencia de diseño de Córdoba. Vi que no tienen página propia y en el rubro ${l.rubro} eso es plata que se va: la gente googlea, no te encuentra, y le escribe al que sí aparece. Te propongo algo simple: te armo una demo real de tu web, gratis, y si te gusta la dejamos lista en 48hs por $170.000. ¿Querés que te la muestre?`,\n    followup: `Hola de nuevo! Quedó pendiente lo de la web de ${l.nombre}. La demo ya casi está y no te compromete a nada. ¿Te la paso así la ves? 🙂`,\n  }),\n  (l) => ({\n    mensaje: `Hola! Les escribo de Impulso Web (Córdoba). Trabajamos con negocios como ${l.nombre} que todavía no tienen página web. El tema es que sin web dependés del boca a boca, y los clientes nuevos te buscan en Google. Hacemos landings profesionales: $170.000, seña del 50% y en 48hs está online. Lo mejor: primero te muestro una demo de TU web ya armada, gratis. ¿Te interesa verla?`,\n    followup: `Buenas! Hace unos días te comenté lo de la página para ${l.nombre}. Sin apuro: la demo es gratis y la ves en 2 minutos. ¿Te la mando?`,\n  }),\n];\n\nleads.forEach((l, i) => {\n  const g = generados[l.placeId];\n  if (g && g.mensaje) {\n    l.mensaje = String(g.mensaje);\n    l.followup = String(g.followup || '');\n    l.origenMensaje = 'gemini';\n  } else {\n    const p = plantillas[i % plantillas.length](l);\n    l.mensaje = p.mensaje;\n    l.followup = p.followup;\n    l.origenMensaje = 'fallback';\n  }\n});\n\nreturn leads.map((l) => ({ json: l }));\n"
+        "jsCode": "// Parsea la respuesta de Gemini y asigna mensaje + follow-up a cada lead.\n// Todo mensaje generado pasa por un control de calidad: si trae placeholders\n// ([Tu Nombre], {{negocio}}, etc.) o viene vacío, se descarta y entra la\n// plantilla de fallback. La corrida nunca se cae y nunca sale un texto roto.\nconst config = $('Config').first().json;\nconst vendedor = String(config.nombreVendedor || 'Seba').trim();\n\nconst leads = $('Calcular score y ordenar').all().map((i) => ({ ...i.json }));\n\nconst generados = {};\ntry {\n  const respuesta = $input.first().json;\n  const texto = respuesta.candidates[0].content.parts[0].text;\n  const limpio = texto.trim().replace(/^```[a-z]*\\n?/i, '').replace(/\\n?```$/, '');\n  for (const m of JSON.parse(limpio)) {\n    if (m && m.id) generados[m.id] = m;\n  }\n} catch (e) {\n  // Gemini caído, sin cuota o respuesta no parseable: siguen las plantillas.\n}\n\n// Rechaza textos con placeholders sin completar o demasiado cortos para ser reales.\nfunction textoInvalido(t) {\n  const s = String(t || '');\n  if (s.trim().length < 80) return true;\n  if (/\\[[^\\]]{1,40}\\]/.test(s)) return true; // [Tu Nombre], [Negocio]...\n  if (/\\{\\{?[^}]{1,40}\\}?\\}/.test(s)) return true; // {{nombre}}, {rubro}...\n  if (/tu nombre|nombre del negocio|nombre de tu/i.test(s)) return true;\n  return false;\n}\n\nconst plantillas = [\n  (l) => ({\n    mensaje: `Hola, ¿hablo con ${l.nombre}? Soy ${vendedor}, de Impulso Web, acá de Córdoba. Hoy la mayoría busca \"${l.rubro}\" en Google antes de decidir, y si no tenés página ese cliente termina en otro lado. Hacemos landing pages profesionales en 48hs por $170.000, con seña del 50%. Antes de que pagues nada te armo una demo de tu web para que la veas, gratis y sin compromiso. ¿Te la paso?`,\n    followup: `Hola! Soy ${vendedor}, te escribí hace unos días por la web de ${l.nombre}. Te dejo la propuesta abierta: la demo es gratis y sin compromiso. Si querés verla, avisame y te la mando 👍`,\n  }),\n  (l) => ({\n    mensaje: `Buenas! ¿Cómo andan en ${l.nombre}? Soy ${vendedor}, de Impulso Web, una agencia de diseño de Córdoba. Vi que no tienen página propia y en el rubro ${l.rubro} eso es plata que se va: la gente googlea, no te encuentra, y le escribe al que sí aparece. Te propongo algo simple: te armo una demo real de tu web, gratis, y si te gusta la dejamos lista en 48hs por $170.000. ¿Querés que te la muestre?`,\n    followup: `Hola de nuevo! Quedó pendiente lo de la web de ${l.nombre}. La demo ya casi está y no te compromete a nada. ¿Te la paso así la ves? 🙂`,\n  }),\n  (l) => ({\n    mensaje: `Hola! Soy ${vendedor}, de Impulso Web (Córdoba). Trabajamos con negocios como ${l.nombre} que todavía no tienen página web. El tema es que sin web dependés del boca a boca, y los clientes nuevos te buscan en Google. Hacemos landings profesionales: $170.000, seña del 50% y en 48hs está online. Lo mejor: primero te muestro una demo de TU web ya armada, gratis. ¿Te interesa verla?`,\n    followup: `Buenas! Hace unos días te comenté lo de la página para ${l.nombre}. Sin apuro: la demo es gratis y la ves en 2 minutos. ¿Te la mando?`,\n  }),\n];\n\nleads.forEach((l, i) => {\n  const g = generados[l.placeId];\n  if (g && g.mensaje && !textoInvalido(g.mensaje)) {\n    l.mensaje = String(g.mensaje);\n    l.followup = !textoInvalido(g.followup) ? String(g.followup) : plantillas[i % plantillas.length](l).followup;\n    l.origenMensaje = 'gemini';\n  } else {\n    const p = plantillas[i % plantillas.length](l);\n    l.mensaje = p.mensaje;\n    l.followup = p.followup;\n    l.origenMensaje = 'fallback';\n  }\n});\n\nreturn leads.map((l) => ({ json: l }));\n"
       }
     },
     {
