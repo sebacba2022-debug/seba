@@ -23,6 +23,7 @@ const codigo = {
   score: leer('03-calcular-score.js'),
   armarPrompt: leer('04-armar-prompt.js'),
   asignarMensajes: leer('05-asignar-mensajes.js'),
+  generarDemos: leer('09-generar-demos.js'),
   actualizarBase: leer('06-actualizar-base-dashboard.js'),
   resumen: leer('07-resumen.js'),
   actualizarEstado: leer('08-actualizar-estado.js'),
@@ -36,7 +37,8 @@ const configMock = {
   placesApiKey: 'clave-de-prueba',
   geminiApiKey: 'clave-de-prueba',
   nombreVendedor: 'Seba',
-  ofertaDetalle: 'Landing page profesional por $170.000 ARS (promo de lanzamiento), seña 50%, entrega 48hs, demo gratis antes de pagar.',
+  ofertaDetalle: 'Landing page profesional por $170.000 ARS (precio promocional), seña 50%, entrega 48hs. Como primer paso se ofrece armar una muestra gratis y sin compromiso de cómo podría verse la web.',
+  rutaDemos: 'C:/ImpulsoWeb/demos',
   zonas: '["Córdoba Capital, Córdoba, Argentina"]',
   rubros: '[{"rubro":"peluquería","prioritario":true},{"rubro":"gimnasio","prioritario":false}]',
   maxLeads: 15,
@@ -130,8 +132,10 @@ function testPipeline() {
   assert.strictEqual(prompt[0].json.totalLeads, 2);
   assert.ok(prompt[0].json.prompt.includes('Peluquería Tota'));
   assert.ok(prompt[0].json.prompt.includes('Sos Seba'), 'el prompt presenta al vendedor por nombre');
-  assert.ok(prompt[0].json.prompt.includes('promo de lanzamiento'), 'el prompt usa la oferta del Config');
+  assert.ok(prompt[0].json.prompt.includes('precio promocional'), 'el prompt usa la oferta del Config');
   assert.ok(prompt[0].json.prompt.includes('"pitch"'), 'el prompt pide el pitch de venta');
+  assert.ok(!/DEMO REAL|ya armada|ya lista/.test(prompt[0].json.prompt.split('OJO')[0]), 'la oferta del prompt no afirma que la web ya existe');
+  assert.ok(prompt[0].json.prompt.includes('la muestra NO existe todavía'), 'el prompt exige honestidad sobre la muestra');
 
   // 5a. Asignar mensajes con respuesta buena de Gemini
   const geminiOk = [{
@@ -179,11 +183,40 @@ function testPipeline() {
   assert.ok(!conControl[0].json.mensaje.includes('['), 'el texto final sale sin corchetes');
   assert.strictEqual(conControl[1].json.origenMensaje, 'gemini', 'el mensaje sano se conserva');
 
+  // 5d. Mensaje deshonesto ("tu web ya está lista") -> se rechaza y entra fallback honesto
+  const geminiDeshonesto = [{
+    json: {
+      candidates: [{ content: { parts: [{ text: JSON.stringify([
+        { id: 'p1', mensaje: 'Hola Peluquería Tota! Soy Seba de Impulso Web. Tengo una buena noticia: tu web ya está lista, la armamos para vos y solo falta que la veas. Landing profesional por $170.000 con seña del 50% y entrega en 48 horas. ¿Te paso el link?', followup: 'Hola de nuevo! Tu web sigue esperándote.' },
+      ]) }] } }],
+    },
+  }];
+  const conHonestidad = ejecutar(codigo.asignarMensajes, {
+    Config: nodoDe([{ json: configMock }]),
+    'Calcular score y ordenar': nodoDe(conScore),
+  }, geminiDeshonesto);
+  assert.strictEqual(conHonestidad[0].json.origenMensaje, 'fallback', 'el mensaje que afirma que la web ya existe se descarta');
+  assert.ok(conHonestidad[0].json.mensaje.includes('te armo una muestra'), 'el fallback ofrece armar la muestra, no la da por hecha');
+
+  // 5e. Generar demos: una muestra visual por lead
+  const conDemos = ejecutar(codigo.generarDemos, {
+    Config: nodoDe([{ json: configMock }]),
+  }, conMensajes);
+  assert.strictEqual(conDemos.length, 2);
+  assert.ok(conDemos[0].json.demoArchivo.startsWith('demos/'), 'ruta relativa para el panel');
+  assert.ok(conDemos[0].json.demoRuta.startsWith('C:/ImpulsoWeb/demos/'), 'ruta absoluta para escribir');
+  const demoHtml = Buffer.from(conDemos[0].binary.demo.data, 'base64').toString('utf8');
+  assert.ok(demoHtml.includes('Peluquería Tota'), 'la muestra lleva el nombre real');
+  assert.ok(demoHtml.includes('MUESTRA'), 'la muestra tiene el banner de honestidad');
+  assert.ok(demoHtml.includes('4.6'), 'la muestra usa el rating real de Google');
+  assert.ok(demoHtml.includes('wa.me/5493515551234'), 'el botón de turnos apunta al WhatsApp del negocio');
+  assert.ok(!demoHtml.includes('undefined'), 'sin datos sin resolver en la muestra');
+
   // 6. Actualizar base y dashboard (primera corrida)
   const resultado = ejecutar(codigo.actualizarBase, {
     Config: nodoDe([{ json: configMock }]),
     'Extraer base': nodoRoto,
-  }, conMensajes);
+  }, conDemos);
   assert.strictEqual(resultado[0].json.agregados, 2);
   const baseGenerada = JSON.parse(Buffer.from(resultado[0].binary.base.data, 'base64').toString('utf8'));
   assert.strictEqual(baseGenerada.leads.length, 2);
@@ -193,6 +226,7 @@ function testPipeline() {
   assert.ok(!html.includes('__WEBHOOK_ESTADO__'), 'placeholder de webhook reemplazado');
   assert.ok(html.includes('var DATA = ['), 'snapshot embebido');
   assert.ok(html.includes('copiar-pitch'), 'el panel tiene el botón de copiar pitch');
+  assert.ok(html.includes('Ver muestra'), 'el panel linkea la muestra generada de cada lead');
   // Chequeo de sintaxis del JS del dashboard (solo parseo, no ejecución)
   const inicio = html.lastIndexOf('<script>') + '<script>'.length;
   const fin = html.lastIndexOf('</script>');
@@ -274,13 +308,14 @@ function armarWorkflow() {
       ['placesApiKey', 'PEGAR_API_KEY_DE_GOOGLE_PLACES', 'string'],
       ['geminiApiKey', 'PEGAR_API_KEY_DE_GEMINI', 'string'],
       ['nombreVendedor', 'Seba', 'string'],
-      ['ofertaDetalle', 'Landing page profesional por $170.000 ARS (precio promocional de lanzamiento). Seña del 50% y entrega en 48 horas. Incluye botón de WhatsApp para turnos y consultas, y queda lista para aparecer en Google. Antes de pagar nada, el negocio ve una demo real de su propia web.', 'string'],
+      ['ofertaDetalle', 'Landing page profesional por $170.000 ARS (precio promocional). Seña del 50% y entrega en 48 horas. Incluye botón de WhatsApp para turnos y consultas, y queda lista para aparecer en Google. Como primer paso se le ofrece al negocio una muestra gratis y sin compromiso de cómo podría verse su web; la versión final lleva sus fotos, servicios y datos reales.', 'string'],
       ['zonas', '["Córdoba Capital, Córdoba, Argentina"]', 'string'],
       ['rubros', '[{"rubro":"peluquería","prioritario":true},{"rubro":"barbería","prioritario":true},{"rubro":"centro de estética","prioritario":true},{"rubro":"gimnasio","prioritario":false},{"rubro":"veterinaria","prioritario":false}]', 'string'],
       ['maxLeads', 15, 'number'],
       ['diasMinimos', 30, 'number'],
       ['rutaBase', 'C:/ImpulsoWeb/leads_db.json', 'string'],
       ['rutaDashboard', 'C:/ImpulsoWeb/dashboard.html', 'string'],
+      ['rutaDemos', 'C:/ImpulsoWeb/demos', 'string'],
       ['webhookEstadoUrl', 'http://localhost:5678/webhook/impulso-estado', 'string'],
       ['webhookLeadsUrl', 'http://localhost:5678/webhook/impulso-leads', 'string'],
     ]),
@@ -388,13 +423,29 @@ function armarWorkflow() {
       parameters: { jsCode: codigo.asignarMensajes },
     },
     {
-      id: 'n13', name: 'Actualizar base y dashboard', type: 'n8n-nodes-base.code',
+      id: 'n17', name: 'Generar demos', type: 'n8n-nodes-base.code',
       typeVersion: 2, position: [2420, 100],
+      parameters: { jsCode: codigo.generarDemos },
+    },
+    {
+      id: 'n18', name: 'Guardar demos', type: 'n8n-nodes-base.readWriteFile',
+      typeVersion: 1, position: [2640, 100],
+      parameters: {
+        operation: 'write',
+        fileName: '={{ $json.demoRuta }}',
+        dataPropertyName: 'demo',
+        options: {},
+      },
+      onError: 'continueRegularOutput', alwaysOutputData: true,
+    },
+    {
+      id: 'n13', name: 'Actualizar base y dashboard', type: 'n8n-nodes-base.code',
+      typeVersion: 2, position: [2860, 100],
       parameters: { jsCode: codigo.actualizarBase },
     },
     {
       id: 'n14', name: 'Guardar base', type: 'n8n-nodes-base.readWriteFile',
-      typeVersion: 1, position: [2640, 100],
+      typeVersion: 1, position: [3080, 100],
       parameters: {
         operation: 'write',
         fileName: "={{ $('Config').first().json.rutaBase }}",
@@ -404,7 +455,7 @@ function armarWorkflow() {
     },
     {
       id: 'n15', name: 'Guardar dashboard', type: 'n8n-nodes-base.readWriteFile',
-      typeVersion: 1, position: [2860, 100],
+      typeVersion: 1, position: [3300, 100],
       parameters: {
         operation: 'write',
         fileName: "={{ $('Config').first().json.rutaDashboard }}",
@@ -414,7 +465,7 @@ function armarWorkflow() {
     },
     {
       id: 'n16', name: 'Resumen de ejecución', type: 'n8n-nodes-base.code',
-      typeVersion: 2, position: [3080, 100],
+      typeVersion: 2, position: [3520, 100],
       parameters: { jsCode: codigo.resumen },
     },
 
@@ -512,7 +563,9 @@ function armarWorkflow() {
     ['Calcular score y ordenar', 'Armar prompt'],
     ['Armar prompt', 'Generar mensajes (Gemini)'],
     ['Generar mensajes (Gemini)', 'Asignar mensajes'],
-    ['Asignar mensajes', 'Actualizar base y dashboard'],
+    ['Asignar mensajes', 'Generar demos'],
+    ['Generar demos', 'Guardar demos'],
+    ['Guardar demos', 'Actualizar base y dashboard'],
     ['Actualizar base y dashboard', 'Guardar base'],
     ['Guardar base', 'Guardar dashboard'],
     ['Guardar dashboard', 'Resumen de ejecución'],

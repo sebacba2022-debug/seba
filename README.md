@@ -66,8 +66,21 @@ nunca se cae), scoring antes de gastar IA, retry en todos los HTTP.
    filtra los que tienen web real, dedup contra la base respetando `diasMinimos`.
 6. **Calcular score y ordenar** (Code): `+3` rubro prioritario, `+2` celular, `+2` red social
    sin web, `+1` rating ≥4 con ≥5 reseñas, `+1` dirección física, `+1` base. Corta a `maxLeads`.
-7. **Armar prompt** → **Gemini** (1 sola llamada) → **Asignar mensajes** (parseo + fallback).
-8. **Actualizar base y dashboard** (Code) → **Guardar base** → **Guardar dashboard** → **Resumen**.
+7. **Armar prompt** → **Gemini** (1 sola llamada) → **Asignar mensajes** (parseo + control de
+   calidad: se descarta todo texto con placeholders o que afirme que la web "ya está lista" —
+   los mensajes son honestos por diseño: se OFRECE armar una muestra, nunca se dice que ya existe).
+8. **Generar demos** (Code): arma la **muestra visual** de la web de cada lead — una landing
+   autocontenida con plantilla según rubro (peluquería, barbería, estética, gimnasio,
+   veterinaria, odontología o genérica), sus datos reales de Google (nombre, rating, reseñas,
+   dirección) y botón de turnos por WhatsApp apuntando a su número. Cada muestra lleva un
+   banner permanente de "MUESTRA" para que quede claro que es un ejemplo. Se guardan en
+   `C:\ImpulsoWeb\demos\`, y el panel las abre con el botón "Ver muestra".
+9. **Actualizar base y dashboard** (Code) → **Guardar base** → **Guardar dashboard** → **Resumen**.
+
+**El flujo de venta con las muestras**: cuando un lead responde con interés, su muestra ya
+está en el disco. La abrís desde el panel ("Ver muestra"), le sacás una captura (o la subís a
+Netlify si querés mandar link) y se la enviás por WhatsApp junto con el pitch. De "me interesa"
+a "mirá cómo quedaría la tuya" en 2 minutos — la velocidad de respuesta es media venta.
 
 **Flujo de estados** (webhook, requiere workflow *activo*):
 `POST /webhook/impulso-estado` — el panel manda `{telefono|placeId, estado}` (suelto o en
@@ -87,7 +100,8 @@ se regenera (los datos no cambiaron; el panel viejo sigue siendo válido).
    ```
    N8N_RESTRICT_FILE_ACCESS_TO=C:\ImpulsoWeb
    ```
-   Creá la carpeta `C:\ImpulsoWeb` si no existe.
+   Creá las carpetas `C:\ImpulsoWeb` y `C:\ImpulsoWeb\demos` si no existen (la segunda es
+   donde se guardan las muestras; si falta, la corrida sigue pero sin generar los archivos).
 
 2. **Importar** `workflows/impulso-web-v8.json` en n8n (Workflows → Import from File).
 

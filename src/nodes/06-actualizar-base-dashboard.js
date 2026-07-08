@@ -32,6 +32,7 @@ for (const l of nuevos) {
       mensaje: l.mensaje,
       pitch: l.pitch,
       followup: l.followup,
+      demoArchivo: l.demoArchivo,
       origenMensaje: l.origenMensaje,
       estado: 'nuevo',
       recontacto: true,
@@ -334,6 +335,7 @@ function cardHtml(l) {
     + '</details>'
     + '<div class="acciones">'
     + '<button data-accion="wa" data-id="' + id + '" class="btn btn-wa">WhatsApp</button>'
+    + (l.demoArchivo ? '<a class="btn btn-sm" style="text-decoration:none;color:#f4f4f5;" href="' + esc(l.demoArchivo) + '" target="_blank">Ver muestra</a>' : '')
     + '<button data-accion="copiar-pitch" data-id="' + id + '" class="btn btn-sm">Copiar pitch</button>'
     + '<button data-accion="copiar-followup" data-id="' + id + '" class="btn btn-sm">Copiar follow-up</button>'
     + '<select data-id="' + id + '">' + opciones + '</select>'
