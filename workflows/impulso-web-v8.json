@@ -1,0 +1,838 @@
+{
+  "name": "Impulso Web v8 - Prospección con Google Places",
+  "nodes": [
+    {
+      "id": "n01",
+      "name": "Ejecutar manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "n02",
+      "name": "Cron diario 9:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        200
+      ],
+      "disabled": true,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 9,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n03",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        100
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n03-0",
+              "name": "placesApiKey",
+              "value": "PEGAR_API_KEY_DE_GOOGLE_PLACES",
+              "type": "string"
+            },
+            {
+              "id": "n03-1",
+              "name": "geminiApiKey",
+              "value": "PEGAR_API_KEY_DE_GEMINI",
+              "type": "string"
+            },
+            {
+              "id": "n03-2",
+              "name": "zonas",
+              "value": "[\"Córdoba Capital, Córdoba, Argentina\"]",
+              "type": "string"
+            },
+            {
+              "id": "n03-3",
+              "name": "rubros",
+              "value": "[{\"rubro\":\"peluquería\",\"prioritario\":true},{\"rubro\":\"barbería\",\"prioritario\":true},{\"rubro\":\"centro de estética\",\"prioritario\":true},{\"rubro\":\"gimnasio\",\"prioritario\":false},{\"rubro\":\"veterinaria\",\"prioritario\":false}]",
+              "type": "string"
+            },
+            {
+              "id": "n03-4",
+              "name": "maxLeads",
+              "value": 15,
+              "type": "number"
+            },
+            {
+              "id": "n03-5",
+              "name": "diasMinimos",
+              "value": 30,
+              "type": "number"
+            },
+            {
+              "id": "n03-6",
+              "name": "rutaBase",
+              "value": "C:/ImpulsoWeb/leads_db.json",
+              "type": "string"
+            },
+            {
+              "id": "n03-7",
+              "name": "rutaDashboard",
+              "value": "C:/ImpulsoWeb/dashboard.html",
+              "type": "string"
+            },
+            {
+              "id": "n03-8",
+              "name": "webhookEstadoUrl",
+              "value": "http://localhost:5678/webhook/impulso-estado",
+              "type": "string"
+            },
+            {
+              "id": "n03-9",
+              "name": "webhookLeadsUrl",
+              "value": "http://localhost:5678/webhook/impulso-leads",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "n04",
+      "name": "Leer base",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        440,
+        100
+      ],
+      "parameters": {
+        "fileSelector": "={{ $json.rutaBase }}",
+        "options": {}
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "n05",
+      "name": "Extraer base",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        660,
+        100
+      ],
+      "parameters": {
+        "operation": "fromJson",
+        "options": {}
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "n06",
+      "name": "Armar búsquedas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// Genera una búsqueda de texto por cada combinación zona × rubro.\n// Cada item de salida se convierte en un POST a Places Text Search.\nconst config = $('Config').first().json;\n\nif (String(config.placesApiKey || '').includes('PEGAR')) {\n  throw new Error('Falta configurar la API key de Google Places en el nodo Config.');\n}\n\nlet zonas;\nlet rubros;\ntry {\n  zonas = JSON.parse(config.zonas);\n} catch (e) {\n  throw new Error('Config > zonas no es un JSON válido. Ejemplo: [\"Córdoba Capital, Argentina\"]');\n}\ntry {\n  rubros = JSON.parse(config.rubros);\n} catch (e) {\n  throw new Error('Config > rubros no es un JSON válido. Ejemplo: [{\"rubro\":\"peluquería\",\"prioritario\":true}]');\n}\n\nconst busquedas = [];\nfor (const zona of zonas) {\n  for (const r of rubros) {\n    busquedas.push({\n      json: {\n        textQuery: r.rubro + ' en ' + zona,\n        rubro: r.rubro,\n        prioritario: !!r.prioritario,\n        zona,\n      },\n    });\n  }\n}\n\nif (!busquedas.length) {\n  throw new Error('No hay búsquedas para hacer: revisá zonas y rubros en el nodo Config.');\n}\n\nreturn busquedas;\n"
+      }
+    },
+    {
+      "id": "n07",
+      "name": "Buscar en Google Places",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        100
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://places.googleapis.com/v1/places:searchText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Goog-Api-Key",
+              "value": "={{ $('Config').first().json.placesApiKey }}"
+            },
+            {
+              "name": "X-Goog-FieldMask",
+              "value": "places.id,places.displayName,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.formattedAddress,places.googleMapsUri,nextPageToken"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "textQuery",
+              "value": "={{ $json.textQuery }}"
+            },
+            {
+              "name": "languageCode",
+              "value": "es"
+            },
+            {
+              "name": "regionCode",
+              "value": "AR"
+            },
+            {
+              "name": "pageSize",
+              "value": "20"
+            }
+          ]
+        },
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": [
+                  {
+                    "type": "body",
+                    "name": "pageToken",
+                    "value": "={{ $response.body?.nextPageToken ?? '' }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ !$response.body?.nextPageToken }}",
+              "limitPagesFetched": true,
+              "maxRequests": 2,
+              "requestInterval": 2000
+            }
+          }
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "n08",
+      "name": "Normalizar y dedupear",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// Aplana las respuestas de Places API, arma leads con formato propio y descarta:\n// - negocios con web real (los que tienen solo Instagram/Facebook/Linktree SÍ son leads)\n// - negocios sin teléfono\n// - duplicados dentro de la corrida y contra la base (respetando diasMinimos)\nconst config = $('Config').first().json;\nconst diasMinimos = Number(config.diasMinimos) || 30;\n\nlet base = [];\ntry {\n  const raw = $('Extraer base').first().json;\n  if (raw && Array.isArray(raw.leads)) base = raw.leads;\n  else if (Array.isArray(raw)) base = raw;\n} catch (e) {\n  // Primera corrida: la base todavía no existe.\n}\n\nconst porClave = new Map();\nfor (const l of base) {\n  if (l.placeId) porClave.set(l.placeId, l);\n  if (l.telefono) porClave.set(l.telefono, l);\n}\n\nconst REDES = [\n  ['instagram.com', 'instagram'],\n  ['facebook.com', 'facebook'],\n  ['linktr.ee', 'linktree'],\n  ['wa.me', 'whatsapp'],\n  ['api.whatsapp.com', 'whatsapp'],\n  ['tiktok.com', 'tiktok'],\n];\n\nfunction detectarRed(url) {\n  const u = String(url || '').toLowerCase();\n  for (const [dominio, red] of REDES) {\n    if (u.includes(dominio)) return red;\n  }\n  return null;\n}\n\n// Normaliza a formato WhatsApp argentino: 549 + código de área + número (sin 0 ni 15).\nfunction normalizarTelefono(nacional, internacional) {\n  let d = String(internacional || nacional || '').replace(/\\D/g, '');\n  if (!d) return null;\n  if (d.startsWith('54')) d = d.slice(2);\n  if (d.startsWith('9')) d = d.slice(1);\n  if (d.startsWith('0')) d = d.slice(1);\n  // Si quedó el \"15\" del formato local (área de 2 a 4 dígitos + 15 + local), sacarlo.\n  if (d.length === 12) {\n    for (const areaLen of [2, 3, 4]) {\n      if (d.slice(areaLen, areaLen + 2) === '15') {\n        d = d.slice(0, areaLen) + d.slice(areaLen + 2);\n        break;\n      }\n    }\n  }\n  if (d.length < 10) return null;\n  if (d.length > 10) d = d.slice(-10);\n  return '549' + d;\n}\n\nconst vistos = new Set();\nconst out = [];\nconst entradas = $input.all();\n\nfor (let i = 0; i < entradas.length; i++) {\n  // Recupera qué búsqueda (rubro/zona) originó esta página de resultados.\n  let origen = {};\n  try {\n    origen = $('Armar búsquedas').itemMatching(i).json;\n  } catch (e) {\n    // Si n8n no puede trazar el item de origen, el lead sale sin rubro/zona.\n  }\n\n  const places = entradas[i].json.places || [];\n  for (const p of places) {\n    const web = p.websiteUri || '';\n    const red = detectarRed(web);\n    if (web && !red) continue; // tiene web real: no es lead\n\n    const telefono = normalizarTelefono(p.nationalPhoneNumber, p.internationalPhoneNumber);\n    if (!telefono) continue; // sin teléfono no hay canal de contacto\n\n    // Google marca los celulares argentinos con +54 9: es el mejor indicador de WhatsApp.\n    const esCelular = String(p.internationalPhoneNumber || '').replace(/\\s/g, '').startsWith('+549');\n\n    const existente = porClave.get(p.id) || porClave.get(telefono);\n    let recontacto = false;\n    if (existente) {\n      const dias = (Date.now() - new Date(existente.fechaAgregado || 0).getTime()) / 86400000;\n      const recontactable = ['enviado', 'sin_respuesta'].includes(existente.estado);\n      if (!recontactable || dias < diasMinimos) continue;\n      recontacto = true;\n    }\n\n    if (vistos.has(p.id) || vistos.has(telefono)) continue;\n    vistos.add(p.id);\n    vistos.add(telefono);\n\n    out.push({\n      json: {\n        placeId: p.id,\n        nombre: (p.displayName && p.displayName.text) || 'Negocio',\n        telefono,\n        esCelular,\n        red,\n        urlRed: red ? web : '',\n        rating: p.rating || null,\n        resenas: p.userRatingCount || 0,\n        direccion: p.formattedAddress || '',\n        mapsUrl: p.googleMapsUri || '',\n        rubro: origen.rubro || '',\n        prioritario: !!origen.prioritario,\n        zona: origen.zona || '',\n        recontacto,\n      },\n    });\n  }\n}\n\nreturn out;\n"
+      }
+    },
+    {
+      "id": "n09",
+      "name": "Calcular score y ordenar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// Lead scoring: prioriza a quién vale la pena escribirle antes de gastar la corrida.\nconst config = $('Config').first().json;\nconst maxLeads = Number(config.maxLeads) || 15;\n\nconst items = $input.all();\nfor (const item of items) {\n  const l = item.json;\n  let score = 1; // base\n  if (l.prioritario) score += 3; // rubro prioritario según Config\n  if (l.esCelular) score += 2; // celular = WhatsApp casi seguro\n  if (l.red) score += 2; // invierte en presencia digital pero no tiene web\n  if (l.rating >= 4 && l.resenas >= 5) score += 1; // negocio activo con buena reputación\n  if (l.direccion) score += 1; // local físico verificable\n  l.score = score;\n}\n\nitems.sort((a, b) => b.json.score - a.json.score);\nreturn items.slice(0, maxLeads);\n"
+      }
+    },
+    {
+      "id": "n10",
+      "name": "Armar prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// Arma UN solo prompt con todos los leads (una única llamada a Gemini\n// para esquivar el rate limit del free tier).\nconst leads = $input.all().map((i) => i.json);\n\nconst listado = leads\n  .map((l) => JSON.stringify({\n    id: l.placeId,\n    nombre: l.nombre,\n    rubro: l.rubro,\n    zona: l.zona,\n    rating: l.rating,\n    resenas: l.resenas,\n    red: l.red,\n    recontacto: !!l.recontacto,\n  }))\n  .join('\\n');\n\nconst prompt = [\n  'Sos vendedor senior de Impulso Web, una agencia de diseño web de Córdoba, Argentina.',\n  'Oferta: landing page profesional por $170.000 ARS, seña del 50%, entrega en 48 horas. Antes de cobrar nada, al prospecto se le muestra una DEMO REAL de su propia web ya armada.',\n  '',\n  'Para CADA lead del listado generá dos textos para WhatsApp:',\n  '1. \"mensaje\": primer contacto en frío, de 350 a 550 caracteres. Debe: saludar nombrando al negocio, mostrar que conocés su rubro con UN dolor concreto y creíble (ej.: la gente busca su rubro en Google y no aparecen, pierden turnos por responder tarde, dependen solo del boca a boca o de Instagram), presentar la oferta con precio y entrega en 48hs, ofrecer una demo gratis de su propia web sin compromiso, y cerrar con UNA pregunta fácil de responder. NO incluyas links en este primer mensaje.',\n  '2. \"followup\": recordatorio de 2 o 3 líneas para mandar a los 3 días si no respondió. Amable, sin presionar, reforzando que la demo es gratis.',\n  '',\n  'Tono: argentino cordobés natural, cercano y profesional. Voseo. Máximo 1 emoji por texto. Nada de \"estimado\", nada de lenguaje corporativo, nada de promesas irreales (no prometas \"primer lugar en Google\").',\n  'Si \"recontacto\" es true, el mensaje tiene que reconocer brevemente que ya le escribiste hace un tiempo y traer una novedad (ej.: \"te escribí hace unas semanas, ahora tengo la demo de tu web lista para mostrarte\").',\n  'Si \"red\" es instagram o facebook, mencioná que ya tienen presencia ahí y que la web la potencia (turnos, catálogo, aparecer en Google).',\n  '',\n  'Respondé SOLO con un array JSON válido, sin markdown ni texto extra, con este formato exacto:',\n  '[{\"id\":\"<id del lead>\",\"mensaje\":\"...\",\"followup\":\"...\"}]',\n  '',\n  'Leads (uno por línea, en JSON):',\n  listado,\n].join('\\n');\n\nreturn [{ json: { prompt, totalLeads: leads.length } }];\n"
+      }
+    },
+    {
+      "id": "n11",
+      "name": "Generar mensajes (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        100
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-api-key",
+              "value": "={{ $('Config').first().json.geminiApiKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [{ parts: [{ text: $json.prompt }] }], generationConfig: { temperature: 1, responseMimeType: 'application/json' } }) }}",
+        "options": {}
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "n12",
+      "name": "Asignar mensajes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// Parsea la respuesta de Gemini y asigna mensaje + follow-up a cada lead.\n// Si Gemini falló o devolvió algo raro, entran las plantillas rotativas: la corrida nunca se cae.\nconst leads = $('Calcular score y ordenar').all().map((i) => ({ ...i.json }));\n\nconst generados = {};\ntry {\n  const respuesta = $input.first().json;\n  const texto = respuesta.candidates[0].content.parts[0].text;\n  const limpio = texto.trim().replace(/^```[a-z]*\\n?/i, '').replace(/\\n?```$/, '');\n  for (const m of JSON.parse(limpio)) {\n    if (m && m.id) generados[m.id] = m;\n  }\n} catch (e) {\n  // Gemini caído, sin cuota o respuesta no parseable: siguen las plantillas.\n}\n\nconst plantillas = [\n  (l) => ({\n    mensaje: `Hola, ¿hablo con ${l.nombre}? Te escribo de Impulso Web, acá de Córdoba. Hoy la mayoría busca \"${l.rubro}\" en Google antes de decidir, y si no tenés página ese cliente termina en otro lado. Hacemos landing pages profesionales en 48hs por $170.000, con seña del 50%. Antes de que pagues nada te armo una demo de tu web para que la veas, gratis y sin compromiso. ¿Te la paso?`,\n    followup: `Hola! Te escribí hace unos días por la web de ${l.nombre}. Te dejo la propuesta abierta: la demo es gratis y sin compromiso. Si querés verla, avisame y te la mando 👍`,\n  }),\n  (l) => ({\n    mensaje: `Buenas! ¿Cómo andan en ${l.nombre}? Soy de Impulso Web, una agencia de diseño de Córdoba. Vi que no tienen página propia y en el rubro ${l.rubro} eso es plata que se va: la gente googlea, no te encuentra, y le escribe al que sí aparece. Te propongo algo simple: te armo una demo real de tu web, gratis, y si te gusta la dejamos lista en 48hs por $170.000. ¿Querés que te la muestre?`,\n    followup: `Hola de nuevo! Quedó pendiente lo de la web de ${l.nombre}. La demo ya casi está y no te compromete a nada. ¿Te la paso así la ves? 🙂`,\n  }),\n  (l) => ({\n    mensaje: `Hola! Les escribo de Impulso Web (Córdoba). Trabajamos con negocios como ${l.nombre} que todavía no tienen página web. El tema es que sin web dependés del boca a boca, y los clientes nuevos te buscan en Google. Hacemos landings profesionales: $170.000, seña del 50% y en 48hs está online. Lo mejor: primero te muestro una demo de TU web ya armada, gratis. ¿Te interesa verla?`,\n    followup: `Buenas! Hace unos días te comenté lo de la página para ${l.nombre}. Sin apuro: la demo es gratis y la ves en 2 minutos. ¿Te la mando?`,\n  }),\n];\n\nleads.forEach((l, i) => {\n  const g = generados[l.placeId];\n  if (g && g.mensaje) {\n    l.mensaje = String(g.mensaje);\n    l.followup = String(g.followup || '');\n    l.origenMensaje = 'gemini';\n  } else {\n    const p = plantillas[i % plantillas.length](l);\n    l.mensaje = p.mensaje;\n    l.followup = p.followup;\n    l.origenMensaje = 'fallback';\n  }\n});\n\nreturn leads.map((l) => ({ json: l }));\n"
+      }
+    },
+    {
+      "id": "n13",
+      "name": "Actualizar base y dashboard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// Suma los leads nuevos a la base maestra y regenera el dashboard HTML.\n// El dashboard es 100% autocontenido (CSS embebido, sin CDNs): funciona offline\n// con el snapshot embebido, y si n8n está prendido sincroniza en vivo por webhooks.\nconst config = $('Config').first().json;\n\nlet db = { version: 8, leads: [], actualizado: null };\ntry {\n  const raw = $('Extraer base').first().json;\n  if (raw && Array.isArray(raw.leads)) db = raw;\n  else if (Array.isArray(raw)) db = { leads: raw };\n} catch (e) {\n  // Primera corrida: la base todavía no existe.\n}\ndb.version = 8;\nif (!Array.isArray(db.leads)) db.leads = [];\n\nconst nuevos = $input.all().map((i) => i.json);\nconst ahora = new Date().toISOString();\n\nconst porClave = new Map();\nfor (const l of db.leads) {\n  if (l.placeId) porClave.set(l.placeId, l);\n  if (l.telefono) porClave.set(l.telefono, l);\n}\n\nlet agregados = 0;\nlet recontactos = 0;\nfor (const l of nuevos) {\n  const previo = porClave.get(l.placeId) || porClave.get(l.telefono);\n  if (previo) {\n    Object.assign(previo, {\n      mensaje: l.mensaje,\n      followup: l.followup,\n      origenMensaje: l.origenMensaje,\n      estado: 'nuevo',\n      recontacto: true,\n      score: l.score,\n      fechaAgregado: ahora,\n    });\n    previo.historial = (previo.historial || []).concat([{ fecha: ahora, evento: 'recontacto' }]);\n    recontactos += 1;\n  } else {\n    const nuevo = Object.assign({}, l, {\n      estado: 'nuevo',\n      fechaAgregado: ahora,\n      historial: [{ fecha: ahora, evento: 'creado' }],\n    });\n    db.leads.push(nuevo);\n    if (nuevo.placeId) porClave.set(nuevo.placeId, nuevo);\n    if (nuevo.telefono) porClave.set(nuevo.telefono, nuevo);\n    agregados += 1;\n  }\n}\ndb.actualizado = ahora;\n\nconst html = generarDashboard(db, config);\nconst jsonBase = JSON.stringify(db, null, 2);\n\nreturn [{\n  json: { totalBase: db.leads.length, agregados, recontactos },\n  binary: {\n    base: {\n      data: Buffer.from(jsonBase, 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: 'leads_db.json',\n    },\n    dashboard: {\n      data: Buffer.from(html, 'utf8').toString('base64'),\n      mimeType: 'text/html',\n      fileName: 'dashboard.html',\n    },\n  },\n}];\n\nfunction generarDashboard(baseDatos, cfg) {\n  // Se escapa \"<\" para que ningún mensaje pueda cerrar el tag <script>.\n  const datos = JSON.stringify(baseDatos.leads || []).replace(/</g, '\\\\u003c');\n  const fecha = baseDatos.actualizado ? new Date(baseDatos.actualizado).toLocaleString('es-AR') : '-';\n\n  // OJO: dentro de la plantilla no se pueden usar backticks ni ${ } porque es un\n  // template literal de JS. El JS del dashboard usa solo comillas simples y concatenación.\n  const plantilla = `<!doctype html>\n<html lang=\"es\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Impulso Web - Panel de prospección</title>\n<style>\n* { box-sizing: border-box; }\nbody { margin: 0; background: #09090b; color: #f4f4f5; font-family: system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif; }\n.wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }\n.top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 20px; }\nh1 { margin: 0; font-size: 24px; }\n.sub { color: #a1a1aa; font-size: 13px; margin: 3px 0 0; }\n#sync { font-size: 11px; color: #71717a; margin: 3px 0 0; }\n#sync.ok { color: #34d399; }\n#sync.warn { color: #fbbf24; }\n.btn { background: #27272a; border: 1px solid #3f3f46; color: #f4f4f5; padding: 8px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; }\n.btn:hover { background: #3f3f46; }\n.btn-wa { background: #059669; border-color: #047857; font-weight: 600; }\n.btn-wa:hover { background: #10b981; }\n.btn-sm { padding: 6px 10px; font-size: 12px; }\n#stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; margin-bottom: 16px; }\n.stat { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 8px 12px; }\n.stat b { font-size: 18px; }\n.stat span { display: block; font-size: 11px; color: #a1a1aa; margin-top: 2px; }\ndetails.panel { background: #18181b; border: 1px solid #27272a; border-radius: 12px; margin-bottom: 16px; }\ndetails.panel > summary { padding: 12px 16px; cursor: pointer; font-size: 13px; color: #d4d4d8; }\n#analytics { padding: 0 16px 16px; overflow-x: auto; }\n#analytics table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }\n#analytics th { color: #a1a1aa; font-weight: 500; padding: 6px 16px 6px 0; }\n#analytics td { padding: 6px 16px 6px 0; border-top: 1px solid #27272a; }\n.filtros { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; align-items: center; }\ninput[type=\"text\"], select { background: #18181b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 8px; padding: 8px 10px; font-size: 13px; }\n#q { flex: 1; min-width: 220px; }\n#q::placeholder { color: #71717a; }\n.check { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #d4d4d8; background: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 8px 10px; }\n.check input { accent-color: #10b981; }\n#cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }\n.card { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }\n.card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }\n.card h3 { margin: 0; font-size: 15px; line-height: 1.25; }\n.rubro { font-size: 12px; color: #a1a1aa; margin: 3px 0 0; }\n.score { font-size: 12px; font-weight: 700; color: #a5b4fc; background: rgba(99,102,241,.15); padding: 4px 8px; border-radius: 8px; white-space: nowrap; }\n.badges { display: flex; flex-wrap: wrap; gap: 6px; }\n.badge { font-size: 11px; padding: 2px 9px; border-radius: 999px; }\n.b-nuevo { background: rgba(14,165,233,.15); color: #7dd3fc; }\n.b-enviado { background: rgba(245,158,11,.15); color: #fcd34d; }\n.b-sin_respuesta { background: rgba(113,113,122,.2); color: #d4d4d8; }\n.b-respondio { background: rgba(16,185,129,.15); color: #6ee7b7; }\n.b-demo { background: rgba(139,92,246,.15); color: #c4b5fd; }\n.b-cerrado { background: rgba(34,197,94,.18); color: #86efac; }\n.b-descartado { background: rgba(244,63,94,.15); color: #fda4af; }\n.b-fijo { background: rgba(113,113,122,.25); color: #a1a1aa; }\n.b-recontacto { background: rgba(249,115,22,.15); color: #fdba74; }\n.meta { font-size: 12px; color: #a1a1aa; }\n.meta p { margin: 3px 0; }\na { color: #38bdf8; text-decoration: none; }\na:hover { text-decoration: underline; }\ndetails.msj > summary { font-size: 13px; color: #d4d4d8; cursor: pointer; }\n.texto { white-space: pre-wrap; background: rgba(9,9,11,.6); border: 1px solid #27272a; border-radius: 8px; padding: 12px; font-size: 13px; margin-top: 8px; }\n.fup { font-size: 12px; color: #a1a1aa; white-space: pre-wrap; margin-top: 8px; }\n.acciones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: auto; }\n.acciones select { margin-left: auto; font-size: 12px; padding: 6px 8px; }\n#vacio { display: none; text-align: center; color: #71717a; padding: 48px 0; }\n#vacio.visible { display: block; }\n</style>\n</head>\n<body>\n<div class=\"wrap\">\n  <header class=\"top\">\n    <div>\n      <h1>Impulso Web</h1>\n      <p class=\"sub\">Panel de prospección — actualizado: __ACTUALIZADO__</p>\n      <p id=\"sync\">Panel local</p>\n    </div>\n    <div style=\"display:flex; gap:8px;\">\n      <button id=\"btnRefrescar\" class=\"btn\">Refrescar</button>\n      <button id=\"btnCsv\" class=\"btn\">Exportar CSV</button>\n    </div>\n  </header>\n\n  <div id=\"stats\"></div>\n\n  <details class=\"panel\">\n    <summary>Analytics por rubro (tasa de respuesta y cierre)</summary>\n    <div id=\"analytics\"></div>\n  </details>\n\n  <div class=\"filtros\">\n    <input type=\"text\" id=\"q\" placeholder=\"Buscar nombre, teléfono, dirección...\">\n    <select id=\"fEstado\"></select>\n    <select id=\"fRubro\"></select>\n    <select id=\"fOrden\">\n      <option value=\"score\">Mayor score</option>\n      <option value=\"fecha\">Más recientes</option>\n    </select>\n    <label class=\"check\"><input type=\"checkbox\" id=\"fCel\">Solo celulares</label>\n  </div>\n\n  <div id=\"cards\"></div>\n  <p id=\"vacio\">No hay leads que coincidan con el filtro.</p>\n</div>\n\n<script>\nvar DATA = __DATA__;\nvar WEBHOOK_ESTADO = '__WEBHOOK_ESTADO__';\nvar WEBHOOK_LEADS = '__WEBHOOK_LEADS__';\nvar NL = String.fromCharCode(10);\nvar BOM = String.fromCharCode(65279);\nvar ESTADOS = ['nuevo', 'enviado', 'sin_respuesta', 'respondio', 'demo', 'cerrado', 'descartado'];\nvar NOMBRE_ESTADO = { nuevo: 'Nuevo', enviado: 'Enviado', sin_respuesta: 'Sin respuesta', respondio: 'Respondió', demo: 'Demo enviada', cerrado: 'Cerrado', descartado: 'Descartado' };\n\nfunction esc(s) {\n  return String(s == null ? '' : s).replace(/[&<>\"']/g, function (c) {\n    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' })[c];\n  });\n}\nfunction leadId(l) { return l.placeId || l.telefono; }\nfunction buscarLead(id) {\n  for (var i = 0; i < DATA.length; i++) { if (leadId(DATA[i]) === id) return DATA[i]; }\n  return null;\n}\n\n// --- Cola offline: si n8n está apagado, los cambios quedan en localStorage y se reintenta ---\nfunction getCola() { try { return JSON.parse(localStorage.getItem('iw_cola') || '[]'); } catch (e) { return []; } }\nfunction setColaLS(c) { localStorage.setItem('iw_cola', JSON.stringify(c)); }\nfunction aplicarCola() {\n  getCola().forEach(function (u) { var l = buscarLead(u.id); if (l) l.estado = u.estado; });\n}\nfunction encolar(u) {\n  var c = getCola().filter(function (x) { return x.id !== u.id; });\n  c.push(u);\n  setColaLS(c);\n}\nfunction marcarSync(ok, msj) {\n  var el = document.getElementById('sync');\n  el.textContent = msj;\n  el.className = ok ? 'ok' : 'warn';\n}\nfunction enviarEstado(u) {\n  fetch(WEBHOOK_ESTADO, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(u) })\n    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); marcarSync(true, 'Sincronizado con n8n'); })\n    .catch(function () { encolar(u); marcarSync(false, 'n8n sin conexión: cambio guardado en el navegador, se reintenta solo'); });\n}\nfunction flushCola() {\n  var c = getCola();\n  if (!c.length) return;\n  fetch(WEBHOOK_ESTADO, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ updates: c }) })\n    .then(function (r) { if (r.ok) { setColaLS([]); marcarSync(true, 'Cambios pendientes sincronizados con n8n'); } })\n    .catch(function () {});\n}\nfunction setEstado(id, estado) {\n  var l = buscarLead(id);\n  if (!l) return;\n  l.estado = estado;\n  enviarEstado({ id: id, placeId: l.placeId || '', telefono: l.telefono || '', estado: estado, fecha: new Date().toISOString() });\n  render();\n}\nfunction refrescar() {\n  fetch(WEBHOOK_LEADS)\n    .then(function (r) { return r.json(); })\n    .then(function (d) {\n      if (d && Array.isArray(d.leads)) { DATA = d.leads; aplicarCola(); render(); marcarSync(true, 'Datos en vivo desde n8n'); }\n    })\n    .catch(function () { marcarSync(false, 'n8n apagado: mostrando snapshot de la última corrida'); });\n}\n\nfunction copiar(texto, btn) {\n  var listo = function () {\n    var t = btn.textContent;\n    btn.textContent = 'Copiado ✓';\n    setTimeout(function () { btn.textContent = t; }, 1200);\n  };\n  if (navigator.clipboard && navigator.clipboard.writeText) {\n    navigator.clipboard.writeText(texto).then(listo, function () { copiarViejo(texto, listo); });\n  } else {\n    copiarViejo(texto, listo);\n  }\n}\nfunction copiarViejo(texto, listo) {\n  var ta = document.createElement('textarea');\n  ta.value = texto;\n  document.body.appendChild(ta);\n  ta.select();\n  try { document.execCommand('copy'); } catch (e) {}\n  document.body.removeChild(ta);\n  listo();\n}\n\nfunction contar() {\n  var c = { total: DATA.length };\n  ESTADOS.forEach(function (e) { c[e] = 0; });\n  DATA.forEach(function (l) { if (c[l.estado] != null) c[l.estado]++; });\n  c.contactados = c.enviado + c.sin_respuesta + c.respondio + c.demo + c.cerrado;\n  c.respuestas = c.respondio + c.demo + c.cerrado;\n  c.tasa = c.contactados ? Math.round(100 * c.respuestas / c.contactados) : 0;\n  return c;\n}\nfunction renderStats() {\n  var c = contar();\n  var tarjetas = [\n    ['Total', c.total], ['Nuevos', c.nuevo], ['Enviados', c.enviado], ['Sin respuesta', c.sin_respuesta],\n    ['Respondieron', c.respondio], ['Demos', c.demo], ['Cerrados', c.cerrado], ['Tasa de respuesta', c.tasa + '%']\n  ];\n  document.getElementById('stats').innerHTML = tarjetas.map(function (t) {\n    return '<div class=\"stat\"><b>' + t[1] + '</b><span>' + t[0] + '</span></div>';\n  }).join('');\n}\nfunction renderAnalytics() {\n  var g = {};\n  DATA.forEach(function (l) {\n    var r = l.rubro || 'otros';\n    if (!g[r]) g[r] = { total: 0, contactados: 0, respuestas: 0, cerrados: 0 };\n    g[r].total++;\n    if (l.estado && l.estado !== 'nuevo' && l.estado !== 'descartado') g[r].contactados++;\n    if (l.estado === 'respondio' || l.estado === 'demo' || l.estado === 'cerrado') g[r].respuestas++;\n    if (l.estado === 'cerrado') g[r].cerrados++;\n  });\n  var filas = Object.keys(g).sort().map(function (r) {\n    var x = g[r];\n    var tasa = x.contactados ? Math.round(100 * x.respuestas / x.contactados) : 0;\n    return '<tr><td>' + esc(r) + '</td><td>' + x.total + '</td><td>' + x.contactados + '</td><td>' + x.respuestas + '</td><td>' + x.cerrados + '</td><td>' + tasa + '%</td></tr>';\n  }).join('');\n  document.getElementById('analytics').innerHTML = '<table><thead><tr><th>Rubro</th><th>Leads</th><th>Contactados</th><th>Respuestas</th><th>Cerrados</th><th>Tasa resp.</th></tr></thead><tbody>' + filas + '</tbody></table>';\n}\n\nfunction cardHtml(l) {\n  var id = esc(leadId(l));\n  var badges = '<span class=\"badge b-' + (ESTADOS.indexOf(l.estado) !== -1 ? l.estado : 'nuevo') + '\">' + (NOMBRE_ESTADO[l.estado] || esc(l.estado)) + '</span>';\n  if (l.recontacto) badges += '<span class=\"badge b-recontacto\">recontacto</span>';\n  if (!l.esCelular) badges += '<span class=\"badge b-fijo\" title=\"Teléfono fijo: puede no tener WhatsApp\">fijo</span>';\n  var rating = l.rating ? ('&#9733; ' + l.rating + ' (' + (l.resenas || 0) + ')') : 'sin reseñas';\n  var red = l.red ? ('<a href=\"' + esc(l.urlRed) + '\" target=\"_blank\">' + esc(l.red) + '</a>') : 'sin redes';\n  var opciones = ESTADOS.map(function (e) {\n    return '<option value=\"' + e + '\"' + (l.estado === e ? ' selected' : '') + '>' + NOMBRE_ESTADO[e] + '</option>';\n  }).join('');\n  return '<div class=\"card\">'\n    + '<div class=\"card-top\">'\n    + '<div><h3>' + esc(l.nombre) + '</h3>'\n    + '<p class=\"rubro\">' + esc(l.rubro) + (l.zona ? ' &middot; ' + esc(l.zona) : '') + '</p></div>'\n    + '<span class=\"score\" title=\"Score\">' + (l.score || 0) + ' pts</span>'\n    + '</div>'\n    + '<div class=\"badges\">' + badges + '</div>'\n    + '<div class=\"meta\">'\n    + '<p>' + esc(l.telefono) + ' &middot; ' + rating + ' &middot; ' + red + '</p>'\n    + (l.direccion ? '<p>' + esc(l.direccion) + (l.mapsUrl ? ' &middot; <a target=\"_blank\" href=\"' + esc(l.mapsUrl) + '\">Maps</a>' : '') + '</p>' : '')\n    + '</div>'\n    + '<details class=\"msj\"><summary>Ver mensaje</summary>'\n    + '<p class=\"texto\">' + esc(l.mensaje || '') + '</p>'\n    + (l.followup ? '<p class=\"fup\"><b>Follow-up:</b> ' + esc(l.followup) + '</p>' : '')\n    + '</details>'\n    + '<div class=\"acciones\">'\n    + '<button data-accion=\"wa\" data-id=\"' + id + '\" class=\"btn btn-wa\">WhatsApp</button>'\n    + '<button data-accion=\"copiar-mensaje\" data-id=\"' + id + '\" class=\"btn btn-sm\">Copiar mensaje</button>'\n    + '<button data-accion=\"copiar-followup\" data-id=\"' + id + '\" class=\"btn btn-sm\">Copiar follow-up</button>'\n    + '<select data-id=\"' + id + '\">' + opciones + '</select>'\n    + '</div>'\n    + '</div>';\n}\n\nfunction byScore(a, b) { return (b.score || 0) - (a.score || 0); }\nfunction byFecha(a, b) { return String(b.fechaAgregado || '').localeCompare(String(a.fechaAgregado || '')); }\n\nfunction opcionesRubro(sel) {\n  var rubros = {};\n  DATA.forEach(function (l) { if (l.rubro) rubros[l.rubro] = true; });\n  document.getElementById('fRubro').innerHTML = '<option value=\"\">Todos los rubros</option>'\n    + Object.keys(rubros).sort().map(function (r) {\n      return '<option value=\"' + esc(r) + '\"' + (r === sel ? ' selected' : '') + '>' + esc(r) + '</option>';\n    }).join('');\n}\n\nfunction render() {\n  var q = document.getElementById('q').value.toLowerCase();\n  var fe = document.getElementById('fEstado').value || '';\n  var fr = document.getElementById('fRubro').value || '';\n  var orden = document.getElementById('fOrden').value || 'score';\n  var soloCel = document.getElementById('fCel').checked;\n  opcionesRubro(fr);\n  var lista = DATA.filter(function (l) {\n    if (fe && l.estado !== fe) return false;\n    if (fr && l.rubro !== fr) return false;\n    if (soloCel && !l.esCelular) return false;\n    if (q) {\n      var blob = ((l.nombre || '') + ' ' + (l.telefono || '') + ' ' + (l.direccion || '') + ' ' + (l.zona || '')).toLowerCase();\n      if (blob.indexOf(q) === -1) return false;\n    }\n    return true;\n  });\n  lista.sort(orden === 'fecha' ? byFecha : byScore);\n  renderStats();\n  renderAnalytics();\n  document.getElementById('cards').innerHTML = lista.map(cardHtml).join('');\n  document.getElementById('vacio').className = lista.length ? '' : 'visible';\n}\n\nfunction exportarCsv() {\n  var cab = ['nombre', 'telefono', 'celular', 'rubro', 'zona', 'estado', 'score', 'rating', 'resenas', 'direccion', 'red', 'fechaAgregado', 'mensaje', 'followup'];\n  var filas = DATA.map(function (l) {\n    return [l.nombre, l.telefono, l.esCelular ? 'si' : 'no', l.rubro, l.zona, l.estado, l.score, l.rating, l.resenas, l.direccion, l.red, l.fechaAgregado, l.mensaje, l.followup]\n      .map(function (v) { return '\"' + String(v == null ? '' : v).replace(/\"/g, '\"\"') + '\"'; })\n      .join(';');\n  });\n  var blob = new Blob([BOM + [cab.join(';')].concat(filas).join(NL)], { type: 'text/csv;charset=utf-8' });\n  var a = document.createElement('a');\n  a.href = URL.createObjectURL(blob);\n  a.download = 'leads_impulso_web.csv';\n  a.click();\n}\n\ndocument.getElementById('cards').addEventListener('click', function (ev) {\n  var el = ev.target.closest('[data-accion]');\n  if (!el) return;\n  var l = buscarLead(el.getAttribute('data-id'));\n  if (!l) return;\n  var accion = el.getAttribute('data-accion');\n  if (accion === 'wa') {\n    window.open('https://wa.me/' + l.telefono + '?text=' + encodeURIComponent(l.mensaje || ''), '_blank');\n    if (l.estado === 'nuevo') setEstado(leadId(l), 'enviado');\n  } else if (accion === 'copiar-mensaje') {\n    copiar(l.mensaje || '', el);\n  } else if (accion === 'copiar-followup') {\n    copiar(l.followup || '', el);\n  }\n});\ndocument.getElementById('cards').addEventListener('change', function (ev) {\n  var sel = ev.target.closest('select[data-id]');\n  if (sel) setEstado(sel.getAttribute('data-id'), sel.value);\n});\ndocument.getElementById('fEstado').innerHTML = '<option value=\"\">Todos los estados</option>'\n  + ESTADOS.map(function (e) { return '<option value=\"' + e + '\">' + NOMBRE_ESTADO[e] + '</option>'; }).join('');\n['q', 'fEstado', 'fRubro', 'fOrden', 'fCel'].forEach(function (fid) {\n  document.getElementById(fid).addEventListener('input', render);\n});\ndocument.getElementById('btnRefrescar').addEventListener('click', refrescar);\ndocument.getElementById('btnCsv').addEventListener('click', exportarCsv);\n\naplicarCola();\nrender();\nflushCola();\nrefrescar();\n<\\/script>\n</body>\n</html>`;\n\n  return plantilla\n    .replace('__DATA__', () => datos)\n    .replace('__WEBHOOK_ESTADO__', () => String(cfg.webhookEstadoUrl || ''))\n    .replace('__WEBHOOK_LEADS__', () => String(cfg.webhookLeadsUrl || ''))\n    .replace('__ACTUALIZADO__', () => fecha);\n}\n"
+      }
+    },
+    {
+      "id": "n14",
+      "name": "Guardar base",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        100
+      ],
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Config').first().json.rutaBase }}",
+        "dataPropertyName": "base",
+        "options": {}
+      }
+    },
+    {
+      "id": "n15",
+      "name": "Guardar dashboard",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        2860,
+        100
+      ],
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Config').first().json.rutaDashboard }}",
+        "dataPropertyName": "dashboard",
+        "options": {}
+      }
+    },
+    {
+      "id": "n16",
+      "name": "Resumen de ejecución",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3080,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// Resumen de la corrida: lo que ves al final de la ejecución en n8n.\nconst leads = $('Asignar mensajes').all().map((i) => i.json);\nconst info = $('Actualizar base y dashboard').first().json;\nconst config = $('Config').first().json;\n\nconst fallbacks = leads.filter((l) => l.origenMensaje === 'fallback').length;\nconst celulares = leads.filter((l) => l.esCelular).length;\nconst scorePromedio = leads.length\n  ? Math.round((leads.reduce((a, l) => a + (l.score || 0), 0) / leads.length) * 10) / 10\n  : 0;\n\nreturn [{\n  json: {\n    fecha: new Date().toISOString(),\n    procesados: leads.length,\n    leadsNuevos: info.agregados,\n    recontactos: info.recontactos,\n    conCelular: celulares,\n    scorePromedio,\n    mensajesGemini: leads.length - fallbacks,\n    mensajesFallback: fallbacks,\n    totalEnBase: info.totalBase,\n    dashboard: config.rutaDashboard,\n  },\n}];\n"
+      }
+    },
+    {
+      "id": "n20",
+      "name": "Webhook Estado",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        500
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "impulso-estado",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      }
+    },
+    {
+      "id": "n21",
+      "name": "Config estado",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        500
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n21-0",
+              "name": "rutaBase",
+              "value": "C:/ImpulsoWeb/leads_db.json",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "n22",
+      "name": "Leer base (estado)",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        440,
+        500
+      ],
+      "parameters": {
+        "fileSelector": "={{ $json.rutaBase }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "n23",
+      "name": "Extraer base (estado)",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        660,
+        500
+      ],
+      "parameters": {
+        "operation": "fromJson",
+        "options": {}
+      }
+    },
+    {
+      "id": "n24",
+      "name": "Actualizar estado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        500
+      ],
+      "parameters": {
+        "jsCode": "// Recibe cambios de estado desde el dashboard (webhook POST /impulso-estado)\n// y los persiste en la base maestra. Acepta un cambio suelto o un lote:\n//   { \"telefono\": \"549...\", \"estado\": \"enviado\" }\n//   { \"updates\": [ { \"placeId\": \"...\", \"estado\": \"respondio\" }, ... ] }\nconst body = $('Webhook Estado').first().json.body || {};\n\nlet db = null;\ntry {\n  const raw = $('Extraer base (estado)').first().json;\n  if (raw && Array.isArray(raw.leads)) db = raw;\n  else if (Array.isArray(raw)) db = { leads: raw };\n} catch (e) {\n  // se maneja abajo\n}\nif (!db) {\n  throw new Error('No se pudo leer la base de leads. ¿Ya corriste el workflow al menos una vez?');\n}\n\nconst ESTADOS_VALIDOS = ['nuevo', 'enviado', 'sin_respuesta', 'respondio', 'demo', 'cerrado', 'descartado'];\nconst updates = Array.isArray(body.updates) ? body.updates : [body];\nconst ahora = new Date().toISOString();\n\nlet aplicados = 0;\nfor (const u of updates) {\n  if (!u || !u.estado || !ESTADOS_VALIDOS.includes(u.estado)) continue;\n  const lead = db.leads.find(\n    (l) => (u.placeId && l.placeId === u.placeId) || (u.telefono && l.telefono === u.telefono),\n  );\n  if (!lead) continue;\n  lead.estado = u.estado;\n  lead.fechaEstado = u.fecha || ahora;\n  if (u.nota) lead.nota = u.nota;\n  lead.historial = (lead.historial || []).concat([{ fecha: ahora, evento: 'estado:' + u.estado }]);\n  aplicados += 1;\n}\ndb.actualizado = ahora;\n\nreturn [{\n  json: { ok: true, aplicados, recibidos: updates.length },\n  binary: {\n    data: {\n      data: Buffer.from(JSON.stringify(db, null, 2), 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: 'leads_db.json',\n    },\n  },\n}];\n"
+      }
+    },
+    {
+      "id": "n25",
+      "name": "Guardar base (estado)",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        500
+      ],
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Config estado').first().json.rutaBase }}",
+        "dataPropertyName": "data",
+        "options": {}
+      }
+    },
+    {
+      "id": "n26",
+      "name": "Responder estado",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        500
+      ],
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {}
+      }
+    },
+    {
+      "id": "n30",
+      "name": "Webhook Leads",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        700
+      ],
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "impulso-leads",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      }
+    },
+    {
+      "id": "n31",
+      "name": "Config leads",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        700
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n31-0",
+              "name": "rutaBase",
+              "value": "C:/ImpulsoWeb/leads_db.json",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "n32",
+      "name": "Leer base (leads)",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        440,
+        700
+      ],
+      "parameters": {
+        "fileSelector": "={{ $json.rutaBase }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "n33",
+      "name": "Responder leads",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        700
+      ],
+      "parameters": {
+        "respondWith": "binary",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Ejecutar manualmente": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron diario 9:00": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Leer base",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer base": {
+      "main": [
+        [
+          {
+            "node": "Extraer base",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer base": {
+      "main": [
+        [
+          {
+            "node": "Armar búsquedas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar búsquedas": {
+      "main": [
+        [
+          {
+            "node": "Buscar en Google Places",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar en Google Places": {
+      "main": [
+        [
+          {
+            "node": "Normalizar y dedupear",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar y dedupear": {
+      "main": [
+        [
+          {
+            "node": "Calcular score y ordenar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular score y ordenar": {
+      "main": [
+        [
+          {
+            "node": "Armar prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar prompt": {
+      "main": [
+        [
+          {
+            "node": "Generar mensajes (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar mensajes (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Asignar mensajes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Asignar mensajes": {
+      "main": [
+        [
+          {
+            "node": "Actualizar base y dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar base y dashboard": {
+      "main": [
+        [
+          {
+            "node": "Guardar base",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar base": {
+      "main": [
+        [
+          {
+            "node": "Guardar dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar dashboard": {
+      "main": [
+        [
+          {
+            "node": "Resumen de ejecución",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Estado": {
+      "main": [
+        [
+          {
+            "node": "Config estado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config estado": {
+      "main": [
+        [
+          {
+            "node": "Leer base (estado)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer base (estado)": {
+      "main": [
+        [
+          {
+            "node": "Extraer base (estado)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer base (estado)": {
+      "main": [
+        [
+          {
+            "node": "Actualizar estado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar estado": {
+      "main": [
+        [
+          {
+            "node": "Guardar base (estado)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar base (estado)": {
+      "main": [
+        [
+          {
+            "node": "Responder estado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Leads": {
+      "main": [
+        [
+          {
+            "node": "Config leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config leads": {
+      "main": [
+        [
+          {
+            "node": "Leer base (leads)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer base (leads)": {
+      "main": [
+        [
+          {
+            "node": "Responder leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
