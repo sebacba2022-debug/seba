@@ -27,6 +27,8 @@ const codigo = {
   actualizarBase: leer('06-actualizar-base-dashboard.js'),
   resumen: leer('07-resumen.js'),
   actualizarEstado: leer('08-actualizar-estado.js'),
+  prepararPublicacion: leer('10-preparar-publicacion.js'),
+  publicarNetlify: leer('11-publicar-netlify.js'),
 };
 
 // ---------------------------------------------------------------------------
@@ -47,6 +49,13 @@ const configMock = {
   rutaDashboard: 'C:/ImpulsoWeb/dashboard.html',
   webhookEstadoUrl: 'http://localhost:5678/webhook/impulso-estado',
   webhookLeadsUrl: 'http://localhost:5678/webhook/impulso-leads',
+  webhookPublicarUrl: 'http://localhost:5678/webhook/impulso-publicar',
+};
+
+const configPublicarMock = {
+  rutaBase: 'C:/ImpulsoWeb/leads_db.json',
+  rutaDemos: 'C:/ImpulsoWeb/demos',
+  netlifyToken: 'token-de-prueba',
 };
 
 function nodoDe(items) {
@@ -71,7 +80,17 @@ function ejecutar(fuente, mapaNodos, itemsEntrada) {
   return fn(dollar, nodoDe(itemsEntrada), Buffer);
 }
 
-function testPipeline() {
+// Para nodos Code que usan await y this.helpers (como el de Netlify).
+function ejecutarAsync(fuente, mapaNodos, itemsEntrada, contexto) {
+  const dollar = (nombre) => {
+    if (!(nombre in mapaNodos)) throw new Error('Nodo no mockeado en el test: ' + nombre);
+    return mapaNodos[nombre];
+  };
+  const fn = new Function('$', '$input', 'Buffer', 'return (async () => {\n' + fuente + '\n})();');
+  return fn.call(contexto || {}, dollar, nodoDe(itemsEntrada), Buffer);
+}
+
+async function testPipeline() {
   // 1. Armar búsquedas
   const busquedas = ejecutar(codigo.armarBusquedas, { Config: nodoDe([{ json: configMock }]) }, []);
   assert.strictEqual(busquedas.length, 2, 'deberían salir 2 búsquedas (1 zona × 2 rubros)');
@@ -227,13 +246,15 @@ function testPipeline() {
   assert.ok(html.includes('var DATA = ['), 'snapshot embebido');
   assert.ok(html.includes('copiar-pitch'), 'el panel tiene el botón de copiar pitch');
   assert.ok(html.includes('Ver muestra'), 'el panel linkea la muestra generada de cada lead');
+  assert.ok(html.includes('data-accion="publicar"'), 'el panel tiene el botón Publicar');
+  assert.ok(!html.includes('__WEBHOOK_PUBLICAR__'), 'placeholder del webhook de publicación reemplazado');
   // Chequeo de sintaxis del JS del dashboard (solo parseo, no ejecución)
   const inicio = html.lastIndexOf('<script>') + '<script>'.length;
   const fin = html.lastIndexOf('</script>');
   new Function(html.slice(inicio, fin));
 
   // 6b. Segunda corrida: el mismo lead con recontacto=true no se duplica
-  const recontacto = [{ json: { ...conMensajes[0].json, recontacto: true, mensaje: 'nuevo intento' } }];
+  const recontacto = [{ json: { ...conDemos[0].json, recontacto: true, mensaje: 'nuevo intento' } }];
   const resultado2 = ejecutar(codigo.actualizarBase, {
     Config: nodoDe([{ json: configMock }]),
     'Extraer base': nodoDe([{ json: baseGenerada }]),
@@ -269,6 +290,56 @@ function testPipeline() {
     'Extraer base (estado)': nodoDe([{ json: baseTrasCambio }]),
   }, []);
   assert.strictEqual(lote[0].json.aplicados, 2);
+
+  // 9. Publicación en Netlify desde el panel
+  const crypto = require('crypto');
+
+  // 9a. Preparar: encuentra el lead y arma nombres; token faltante corta con mensaje claro
+  const prep = ejecutar(codigo.prepararPublicacion, {
+    'Webhook Publicar': nodoDe([{ json: { body: { placeId: 'p1' } } }]),
+    'Config publicar': nodoDe([{ json: configPublicarMock }]),
+    'Extraer base (publicar)': nodoDe([{ json: baseGenerada }]),
+  }, []);
+  assert.ok(prep[0].json.siteName.startsWith('impulsoweb-'));
+  assert.ok(prep[0].json.demoRuta.startsWith('C:/ImpulsoWeb/demos/'));
+  assert.throws(() => ejecutar(codigo.prepararPublicacion, {
+    'Webhook Publicar': nodoDe([{ json: { body: { placeId: 'p1' } } }]),
+    'Config publicar': nodoDe([{ json: { ...configPublicarMock, netlifyToken: 'PEGAR_TOKEN_DE_NETLIFY' } }]),
+    'Extraer base (publicar)': nodoDe([{ json: baseGenerada }]),
+  }, []), /token de Netlify/i, 'sin token debe cortar con instrucción clara');
+
+  // 9b. Publicar: crea sitio, declara el archivo por SHA-1, lo sube y guarda la URL
+  const htmlMuestra = '<!doctype html><html><body>hola muestra</body></html>';
+  const llamadas = [];
+  const contextoNetlify = {
+    helpers: {
+      httpRequest: async (o) => {
+        llamadas.push(o);
+        if (o.method === 'POST' && /\/sites$/.test(o.url)) {
+          return { id: 'site-1', ssl_url: 'https://impulsoweb-test.netlify.app' };
+        }
+        if (o.method === 'POST' && /\/deploys$/.test(o.url)) {
+          return { id: 'dep-1', ssl_url: 'https://impulsoweb-test.netlify.app', required: [o.body.files['/index.html']] };
+        }
+        if (o.method === 'PUT') return {};
+        throw new Error('Llamada inesperada en el test: ' + o.method + ' ' + o.url);
+      },
+    },
+  };
+  const publicado = await ejecutarAsync(codigo.publicarNetlify, {
+    'Config publicar': nodoDe([{ json: configPublicarMock }]),
+    'Preparar publicación': nodoDe(prep),
+    'Extraer base (publicar)': nodoDe([{ json: baseGenerada }]),
+  }, [{ json: { data: htmlMuestra } }], contextoNetlify);
+  assert.strictEqual(publicado[0].json.ok, true);
+  assert.ok(publicado[0].json.url.startsWith('https://'));
+  const shaEnviado = llamadas.find((c) => /\/deploys$/.test(c.url)).body.files['/index.html'];
+  const shaEsperado = crypto.createHash('sha1').update(htmlMuestra, 'utf8').digest('hex');
+  assert.strictEqual(shaEnviado, shaEsperado, 'el SHA-1 en JS puro coincide con el de Node');
+  const subida = llamadas.find((c) => c.method === 'PUT');
+  assert.strictEqual(subida.body, htmlMuestra, 'se sube el HTML tal cual');
+  const basePublicada = JSON.parse(Buffer.from(publicado[0].binary.data.data, 'base64').toString('utf8'));
+  assert.strictEqual(basePublicada.leads[0].netlifyUrl, publicado[0].json.url, 'la URL queda guardada en el lead');
 
   return { html, baseGenerada };
 }
@@ -318,6 +389,7 @@ function armarWorkflow() {
       ['rutaDemos', 'C:/ImpulsoWeb/demos', 'string'],
       ['webhookEstadoUrl', 'http://localhost:5678/webhook/impulso-estado', 'string'],
       ['webhookLeadsUrl', 'http://localhost:5678/webhook/impulso-leads', 'string'],
+      ['webhookPublicarUrl', 'http://localhost:5678/webhook/impulso-publicar', 'string'],
     ]),
     {
       id: 'n04', name: 'Leer base', type: 'n8n-nodes-base.readWriteFile',
@@ -514,6 +586,68 @@ function armarWorkflow() {
       parameters: { respondWith: 'firstIncomingItem', options: {} },
     },
 
+    // ----- Flujo: el dashboard publica una muestra en Netlify con un clic -----
+    {
+      id: 'n40', name: 'Webhook Publicar', type: 'n8n-nodes-base.webhook',
+      typeVersion: 2, position: [0, 900],
+      parameters: {
+        httpMethod: 'POST',
+        path: 'impulso-publicar',
+        responseMode: 'responseNode',
+        options: { allowedOrigins: '*' },
+      },
+    },
+    nodoSet('n41', 'Config publicar', [200, 900], [
+      ['rutaBase', 'C:/ImpulsoWeb/leads_db.json', 'string'],
+      ['rutaDemos', 'C:/ImpulsoWeb/demos', 'string'],
+      ['netlifyToken', 'PEGAR_TOKEN_DE_NETLIFY', 'string'],
+    ]),
+    {
+      id: 'n42', name: 'Leer base (publicar)', type: 'n8n-nodes-base.readWriteFile',
+      typeVersion: 1, position: [400, 900],
+      parameters: { fileSelector: '={{ $json.rutaBase }}', options: {} },
+    },
+    {
+      id: 'n43', name: 'Extraer base (publicar)', type: 'n8n-nodes-base.extractFromFile',
+      typeVersion: 1, position: [600, 900],
+      parameters: { operation: 'fromJson', options: {} },
+    },
+    {
+      id: 'n44', name: 'Preparar publicación', type: 'n8n-nodes-base.code',
+      typeVersion: 2, position: [800, 900],
+      parameters: { jsCode: codigo.prepararPublicacion },
+    },
+    {
+      id: 'n45', name: 'Leer muestra', type: 'n8n-nodes-base.readWriteFile',
+      typeVersion: 1, position: [1000, 900],
+      parameters: { fileSelector: '={{ $json.demoRuta }}', options: {} },
+    },
+    {
+      id: 'n46', name: 'Extraer muestra', type: 'n8n-nodes-base.extractFromFile',
+      typeVersion: 1, position: [1200, 900],
+      parameters: { operation: 'text', options: {} },
+    },
+    {
+      id: 'n47', name: 'Publicar en Netlify', type: 'n8n-nodes-base.code',
+      typeVersion: 2, position: [1400, 900],
+      parameters: { jsCode: codigo.publicarNetlify },
+    },
+    {
+      id: 'n48', name: 'Guardar base (publicar)', type: 'n8n-nodes-base.readWriteFile',
+      typeVersion: 1, position: [1600, 900],
+      parameters: {
+        operation: 'write',
+        fileName: "={{ $('Config publicar').first().json.rutaBase }}",
+        dataPropertyName: 'data',
+        options: {},
+      },
+    },
+    {
+      id: 'n49', name: 'Responder publicar', type: 'n8n-nodes-base.respondToWebhook',
+      typeVersion: 1.1, position: [1800, 900],
+      parameters: { respondWith: 'firstIncomingItem', options: {} },
+    },
+
     // ----- Flujo: el dashboard pide los datos en vivo -----
     {
       id: 'n30', name: 'Webhook Leads', type: 'n8n-nodes-base.webhook',
@@ -578,6 +712,15 @@ function armarWorkflow() {
     ['Webhook Leads', 'Config leads'],
     ['Config leads', 'Leer base (leads)'],
     ['Leer base (leads)', 'Responder leads'],
+    ['Webhook Publicar', 'Config publicar'],
+    ['Config publicar', 'Leer base (publicar)'],
+    ['Leer base (publicar)', 'Extraer base (publicar)'],
+    ['Extraer base (publicar)', 'Preparar publicación'],
+    ['Preparar publicación', 'Leer muestra'],
+    ['Leer muestra', 'Extraer muestra'],
+    ['Extraer muestra', 'Publicar en Netlify'],
+    ['Publicar en Netlify', 'Guardar base (publicar)'],
+    ['Guardar base (publicar)', 'Responder publicar'],
   ]);
 
   return {
@@ -593,27 +736,32 @@ function armarWorkflow() {
 // Main
 // ---------------------------------------------------------------------------
 
-const { html } = testPipeline();
-console.log('✔ Pruebas de humo OK (pipeline completo simulado)');
+(async () => {
+  const { html } = await testPipeline();
+  console.log('✔ Pruebas de humo OK (pipeline completo simulado)');
 
-const workflow = armarWorkflow();
+  const workflow = armarWorkflow();
 
-// Toda referencia $('Nodo') en los códigos tiene que apuntar a un nodo real.
-const nombres = new Set(workflow.nodes.map((n) => n.name));
-for (const [archivo, fuente] of Object.entries(codigo)) {
-  for (const m of fuente.matchAll(/\$\('([^']+)'\)/g)) {
-    assert.ok(nombres.has(m[1]), 'Referencia a nodo inexistente "' + m[1] + '" en ' + archivo);
+  // Toda referencia $('Nodo') en los códigos tiene que apuntar a un nodo real.
+  const nombres = new Set(workflow.nodes.map((n) => n.name));
+  for (const [archivo, fuente] of Object.entries(codigo)) {
+    for (const m of fuente.matchAll(/\$\('([^']+)'\)/g)) {
+      assert.ok(nombres.has(m[1]), 'Referencia a nodo inexistente "' + m[1] + '" en ' + archivo);
+    }
   }
-}
-console.log('✔ Referencias entre nodos verificadas');
+  console.log('✔ Referencias entre nodos verificadas');
 
-fs.mkdirSync(path.dirname(SALIDA), { recursive: true });
-fs.writeFileSync(SALIDA, JSON.stringify(workflow, null, 2) + '\n');
-JSON.parse(fs.readFileSync(SALIDA, 'utf8'));
-console.log('✔ Workflow generado: ' + path.relative(RAIZ, SALIDA));
+  fs.mkdirSync(path.dirname(SALIDA), { recursive: true });
+  fs.writeFileSync(SALIDA, JSON.stringify(workflow, null, 2) + '\n');
+  JSON.parse(fs.readFileSync(SALIDA, 'utf8'));
+  console.log('✔ Workflow generado: ' + path.relative(RAIZ, SALIDA));
 
-const idx = process.argv.indexOf('--preview');
-if (idx !== -1 && process.argv[idx + 1]) {
-  fs.writeFileSync(process.argv[idx + 1], html);
-  console.log('✔ Dashboard de muestra: ' + process.argv[idx + 1]);
-}
+  const idx = process.argv.indexOf('--preview');
+  if (idx !== -1 && process.argv[idx + 1]) {
+    fs.writeFileSync(process.argv[idx + 1], html);
+    console.log('✔ Dashboard de muestra: ' + process.argv[idx + 1]);
+  }
+})().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

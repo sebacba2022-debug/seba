@@ -32,7 +32,7 @@ for (const l of nuevos) {
       mensaje: l.mensaje,
       pitch: l.pitch,
       followup: l.followup,
-      demoArchivo: l.demoArchivo,
+      demoArchivo: l.demoArchivo || previo.demoArchivo,
       origenMensaje: l.origenMensaje,
       estado: 'nuevo',
       recontacto: true,
@@ -188,6 +188,7 @@ details.msj > summary { font-size: 13px; color: #d4d4d8; cursor: pointer; }
 var DATA = __DATA__;
 var WEBHOOK_ESTADO = '__WEBHOOK_ESTADO__';
 var WEBHOOK_LEADS = '__WEBHOOK_LEADS__';
+var WEBHOOK_PUBLICAR = '__WEBHOOK_PUBLICAR__';
 var NL = String.fromCharCode(10);
 var BOM = String.fromCharCode(65279);
 var ESTADOS = ['nuevo', 'enviado', 'sin_respuesta', 'respondio', 'demo', 'cerrado', 'descartado'];
@@ -238,6 +239,24 @@ function setEstado(id, estado) {
   l.estado = estado;
   enviarEstado({ id: id, placeId: l.placeId || '', telefono: l.telefono || '', estado: estado, fecha: new Date().toISOString() });
   render();
+}
+function publicar(l, btn) {
+  var t = btn.textContent;
+  btn.textContent = 'Publicando…';
+  btn.disabled = true;
+  fetch(WEBHOOK_PUBLICAR, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ placeId: l.placeId || '', telefono: l.telefono || '' }) })
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function (d) {
+      if (!d || !d.url) throw new Error('sin url');
+      l.netlifyUrl = d.url;
+      marcarSync(true, 'Muestra publicada: ' + d.url);
+      render();
+    })
+    .catch(function () {
+      btn.textContent = t;
+      btn.disabled = false;
+      marcarSync(false, 'No se pudo publicar: revisá que el workflow esté activo y el token de Netlify en el nodo "Config publicar"');
+    });
 }
 function refrescar() {
   fetch(WEBHOOK_LEADS)
@@ -336,6 +355,9 @@ function cardHtml(l) {
     + '<div class="acciones">'
     + '<button data-accion="wa" data-id="' + id + '" class="btn btn-wa">WhatsApp</button>'
     + (l.demoArchivo ? '<a class="btn btn-sm" style="text-decoration:none;color:#f4f4f5;" href="' + esc(l.demoArchivo) + '" target="_blank">Ver muestra</a>' : '')
+    + (l.netlifyUrl
+      ? '<a class="btn btn-sm" style="text-decoration:none;color:#6ee7b7;" href="' + esc(l.netlifyUrl) + '" target="_blank">Ver online</a><button data-accion="copiar-link" data-id="' + id + '" class="btn btn-sm">Copiar link</button>'
+      : (l.demoArchivo ? '<button data-accion="publicar" data-id="' + id + '" class="btn btn-sm">Publicar</button>' : ''))
     + '<button data-accion="copiar-pitch" data-id="' + id + '" class="btn btn-sm">Copiar pitch</button>'
     + '<button data-accion="copiar-followup" data-id="' + id + '" class="btn btn-sm">Copiar follow-up</button>'
     + '<select data-id="' + id + '">' + opciones + '</select>'
@@ -408,6 +430,10 @@ document.getElementById('cards').addEventListener('click', function (ev) {
     copiar(l.pitch || '', el);
   } else if (accion === 'copiar-followup') {
     copiar(l.followup || '', el);
+  } else if (accion === 'publicar') {
+    publicar(l, el);
+  } else if (accion === 'copiar-link') {
+    copiar(l.netlifyUrl || '', el);
   }
 });
 document.getElementById('cards').addEventListener('change', function (ev) {
@@ -434,5 +460,6 @@ refrescar();
     .replace('__DATA__', () => datos)
     .replace('__WEBHOOK_ESTADO__', () => String(cfg.webhookEstadoUrl || ''))
     .replace('__WEBHOOK_LEADS__', () => String(cfg.webhookLeadsUrl || ''))
+    .replace('__WEBHOOK_PUBLICAR__', () => String(cfg.webhookPublicarUrl || ''))
     .replace('__ACTUALIZADO__', () => fecha);
 }
