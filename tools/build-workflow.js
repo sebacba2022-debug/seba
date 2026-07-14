@@ -248,6 +248,11 @@ async function testPipeline() {
   assert.ok(html.includes('Ver muestra'), 'el panel linkea la muestra generada de cada lead');
   assert.ok(html.includes('data-accion="publicar"'), 'el panel tiene el botón Publicar');
   assert.ok(!html.includes('__WEBHOOK_PUBLICAR__'), 'placeholder del webhook de publicación reemplazado');
+  assert.ok(html.includes('id="bandeja"'), 'el panel tiene la bandeja de trabajo del día');
+  assert.ok(html.includes('Facturado'), 'el panel muestra la facturación');
+  assert.ok(resultado[0].binary.backup, 'la corrida genera respaldo de la base anterior');
+  const respaldo = JSON.parse(Buffer.from(resultado[0].binary.backup.data, 'base64').toString('utf8'));
+  assert.strictEqual(respaldo.leads.length, 0, 'el respaldo es el estado ANTERIOR (vacío en la primera corrida)');
   // Chequeo de sintaxis del JS del dashboard (solo parseo, no ejecución)
   const inicio = html.lastIndexOf('<script>') + '<script>'.length;
   const fin = html.lastIndexOf('</script>');
@@ -290,6 +295,15 @@ async function testPipeline() {
     'Extraer base (estado)': nodoDe([{ json: baseTrasCambio }]),
   }, []);
   assert.strictEqual(lote[0].json.aplicados, 2);
+
+  // 8b. Cierre con monto y abono mensual
+  const cierre = ejecutar(codigo.actualizarEstado, {
+    'Webhook Estado': nodoDe([{ json: { body: { placeId: 'p1', estado: 'cerrado', monto: 170000, mensual: 25000 } } }]),
+    'Extraer base (estado)': nodoDe([{ json: baseTrasCambio }]),
+  }, []);
+  const baseCerrada = JSON.parse(Buffer.from(cierre[0].binary.data.data, 'base64').toString('utf8'));
+  assert.strictEqual(baseCerrada.leads[0].monto, 170000, 'el monto de la venta queda en la base');
+  assert.strictEqual(baseCerrada.leads[0].mensual, 25000, 'el abono mensual queda en la base');
 
   // 9. Publicación en Netlify desde el panel
   const crypto = require('crypto');
@@ -526,8 +540,19 @@ function armarWorkflow() {
       },
     },
     {
-      id: 'n15', name: 'Guardar dashboard', type: 'n8n-nodes-base.readWriteFile',
+      id: 'n19', name: 'Guardar backup', type: 'n8n-nodes-base.readWriteFile',
       typeVersion: 1, position: [3300, 100],
+      parameters: {
+        operation: 'write',
+        fileName: "={{ $('Config').first().json.rutaBase + '.backup' }}",
+        dataPropertyName: 'backup',
+        options: {},
+      },
+      onError: 'continueRegularOutput', alwaysOutputData: true,
+    },
+    {
+      id: 'n15', name: 'Guardar dashboard', type: 'n8n-nodes-base.readWriteFile',
+      typeVersion: 1, position: [3520, 100],
       parameters: {
         operation: 'write',
         fileName: "={{ $('Config').first().json.rutaDashboard }}",
@@ -537,7 +562,7 @@ function armarWorkflow() {
     },
     {
       id: 'n16', name: 'Resumen de ejecución', type: 'n8n-nodes-base.code',
-      typeVersion: 2, position: [3520, 100],
+      typeVersion: 2, position: [3740, 100],
       parameters: { jsCode: codigo.resumen },
     },
 
@@ -701,7 +726,8 @@ function armarWorkflow() {
     ['Generar demos', 'Guardar demos'],
     ['Guardar demos', 'Actualizar base y dashboard'],
     ['Actualizar base y dashboard', 'Guardar base'],
-    ['Guardar base', 'Guardar dashboard'],
+    ['Guardar base', 'Guardar backup'],
+    ['Guardar backup', 'Guardar dashboard'],
     ['Guardar dashboard', 'Resumen de ejecución'],
     ['Webhook Estado', 'Config estado'],
     ['Config estado', 'Leer base (estado)'],

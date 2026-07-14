@@ -14,6 +14,9 @@ try {
 db.version = 8;
 if (!Array.isArray(db.leads)) db.leads = [];
 
+// Respaldo del estado ANTERIOR de la base, por si un guardado sale mal.
+const respaldoPrevio = JSON.stringify(db, null, 2);
+
 const nuevos = $input.all().map((i) => i.json);
 const ahora = new Date().toISOString();
 
@@ -71,6 +74,11 @@ return [{
       mimeType: 'text/html',
       fileName: 'dashboard.html',
     },
+    backup: {
+      data: Buffer.from(respaldoPrevio, 'utf8').toString('base64'),
+      mimeType: 'application/json',
+      fileName: 'leads_db.backup.json',
+    },
   },
 }];
 
@@ -106,6 +114,13 @@ h1 { margin: 0; font-size: 24px; }
 .stat { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 8px 12px; }
 .stat b { font-size: 18px; }
 .stat span { display: block; font-size: 11px; color: #a1a1aa; margin-top: 2px; }
+#bandeja { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; margin-bottom: 16px; }
+.accion { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 12px 14px; cursor: pointer; transition: border-color .15s ease; }
+.accion:hover { border-color: #52525b; }
+.accion b { font-size: 20px; }
+.accion span { display: block; font-size: 12px; color: #a1a1aa; margin-top: 2px; }
+.accion.verde { border-color: #10b98155; }
+.accion.alerta { border-color: #f59e0b55; }
 details.panel { background: #18181b; border: 1px solid #27272a; border-radius: 12px; margin-bottom: 16px; }
 details.panel > summary { padding: 12px 16px; cursor: pointer; font-size: 13px; color: #d4d4d8; }
 #analytics { padding: 0 16px 16px; overflow-x: auto; }
@@ -163,6 +178,7 @@ details.msj > summary { font-size: 13px; color: #d4d4d8; cursor: pointer; }
   </header>
 
   <div id="stats"></div>
+  <div id="bandeja"></div>
 
   <details class="panel">
     <summary>Analytics por rubro (tasa de respuesta y cierre)</summary>
@@ -192,6 +208,7 @@ var WEBHOOK_PUBLICAR = '__WEBHOOK_PUBLICAR__';
 var NL = String.fromCharCode(10);
 var BOM = String.fromCharCode(65279);
 var ESTADOS = ['nuevo', 'enviado', 'sin_respuesta', 'respondio', 'demo', 'cerrado', 'descartado'];
+var soloVencidos = false;
 var NOMBRE_ESTADO = { nuevo: 'Nuevo', enviado: 'Enviado', sin_respuesta: 'Sin respuesta', respondio: 'Respondió', demo: 'Demo enviada', cerrado: 'Cerrado', descartado: 'Descartado' };
 
 function esc(s) {
@@ -236,9 +253,25 @@ function flushCola() {
 function setEstado(id, estado) {
   var l = buscarLead(id);
   if (!l) return;
+  var extra = {};
+  if (estado === 'cerrado') {
+    var m = prompt('¡Venta! 🎉 ¿Por qué monto cerraste? (solo números, ej: 170000)', l.monto || '');
+    if (m !== null && String(m).trim() !== '') { l.monto = Number(String(m).replace(/[^0-9]/g, '')) || 0; extra.monto = l.monto; }
+    var ab = prompt('¿Acordaste un abono mensual (mantenimiento/turnos)? Monto o dejalo vacío:', l.mensual || '');
+    if (ab !== null && String(ab).trim() !== '') { l.mensual = Number(String(ab).replace(/[^0-9]/g, '')) || 0; extra.mensual = l.mensual; }
+  }
   l.estado = estado;
-  enviarEstado({ id: id, placeId: l.placeId || '', telefono: l.telefono || '', estado: estado, fecha: new Date().toISOString() });
+  l.fechaEstado = new Date().toISOString();
+  enviarEstado(Object.assign({ id: id, placeId: l.placeId || '', telefono: l.telefono || '', estado: estado, fecha: l.fechaEstado }, extra));
   render();
+}
+function diasDesde(l) {
+  var f = l.fechaEstado || l.fechaAgregado;
+  if (!f) return 0;
+  return (Date.now() - new Date(f).getTime()) / 86400000;
+}
+function esFollowupVencido(l) {
+  return l.estado === 'enviado' && diasDesde(l) >= 3;
 }
 function publicar(l, btn) {
   var t = btn.textContent;
@@ -296,17 +329,35 @@ function contar() {
   c.contactados = c.enviado + c.sin_respuesta + c.respondio + c.demo + c.cerrado;
   c.respuestas = c.respondio + c.demo + c.cerrado;
   c.tasa = c.contactados ? Math.round(100 * c.respuestas / c.contactados) : 0;
+  c.facturado = 0;
+  c.mrr = 0;
+  DATA.forEach(function (l) {
+    if (l.estado === 'cerrado') {
+      c.facturado += Number(l.monto) || 0;
+      c.mrr += Number(l.mensual) || 0;
+    }
+  });
   return c;
 }
 function renderStats() {
   var c = contar();
   var tarjetas = [
     ['Total', c.total], ['Nuevos', c.nuevo], ['Enviados', c.enviado], ['Sin respuesta', c.sin_respuesta],
-    ['Respondieron', c.respondio], ['Demos', c.demo], ['Cerrados', c.cerrado], ['Tasa de respuesta', c.tasa + '%']
+    ['Respondieron', c.respondio], ['Demos', c.demo], ['Cerrados', c.cerrado], ['Tasa de respuesta', c.tasa + '%'],
+    ['Facturado', '$ ' + c.facturado.toLocaleString('es-AR')], ['Abonos/mes', '$ ' + c.mrr.toLocaleString('es-AR')]
   ];
   document.getElementById('stats').innerHTML = tarjetas.map(function (t) {
     return '<div class="stat"><b>' + t[1] + '</b><span>' + t[0] + '</span></div>';
   }).join('');
+}
+function renderBandeja() {
+  var calientes = DATA.filter(function (l) { return l.estado === 'respondio'; }).length;
+  var vencidos = DATA.filter(esFollowupVencido).length;
+  var nuevos = DATA.filter(function (l) { return l.estado === 'nuevo'; }).length;
+  document.getElementById('bandeja').innerHTML =
+    '<div class="accion verde" data-bandeja="calientes"><b>' + calientes + '</b><span>🔥 Respondieron: contestá YA y mandá la muestra</span></div>'
+    + '<div class="accion alerta" data-bandeja="followups"><b>' + vencidos + '</b><span>⏰ Follow-ups vencidos (3+ días sin respuesta)</span></div>'
+    + '<div class="accion" data-bandeja="nuevos"><b>' + nuevos + '</b><span>📤 Nuevos para enviar (máx. 25 por día)</span></div>';
 }
 function renderAnalytics() {
   var g = {};
@@ -331,6 +382,8 @@ function cardHtml(l) {
   var badges = '<span class="badge b-' + (ESTADOS.indexOf(l.estado) !== -1 ? l.estado : 'nuevo') + '">' + (NOMBRE_ESTADO[l.estado] || esc(l.estado)) + '</span>';
   if (l.recontacto) badges += '<span class="badge b-recontacto">recontacto</span>';
   if (!l.esCelular) badges += '<span class="badge b-fijo" title="Teléfono fijo: puede no tener WhatsApp">fijo</span>';
+  if (esFollowupVencido(l)) badges += '<span class="badge b-enviado">⏰ toca follow-up</span>';
+  if (l.estado === 'cerrado' && (l.monto || l.mensual)) badges += '<span class="badge b-cerrado">$ ' + ((Number(l.monto) || 0).toLocaleString('es-AR')) + (l.mensual ? ' + $' + Number(l.mensual).toLocaleString('es-AR') + '/mes' : '') + '</span>';
   var rating = l.rating ? ('&#9733; ' + l.rating + ' (' + (l.resenas || 0) + ')') : 'sin reseñas';
   var red = l.red ? ('<a href="' + esc(l.urlRed) + '" target="_blank">' + esc(l.red) + '</a>') : 'sin redes';
   var opciones = ESTADOS.map(function (e) {
@@ -346,6 +399,7 @@ function cardHtml(l) {
     + '<div class="meta">'
     + '<p>' + esc(l.telefono) + ' &middot; ' + rating + ' &middot; ' + red + '</p>'
     + (l.direccion ? '<p>' + esc(l.direccion) + (l.mapsUrl ? ' &middot; <a target="_blank" href="' + esc(l.mapsUrl) + '">Maps</a>' : '') + '</p>' : '')
+    + (l.nota ? '<p style="color:#fbbf24;">📝 ' + esc(l.nota) + '</p>' : '')
     + '</div>'
     + '<details class="msj"><summary>Ver mensajes</summary>'
     + '<p class="texto">' + esc(l.mensaje || '') + '</p>'
@@ -360,6 +414,7 @@ function cardHtml(l) {
       : (l.demoArchivo ? '<button data-accion="publicar" data-id="' + id + '" class="btn btn-sm">Publicar</button>' : ''))
     + '<button data-accion="copiar-pitch" data-id="' + id + '" class="btn btn-sm">Copiar pitch</button>'
     + '<button data-accion="copiar-followup" data-id="' + id + '" class="btn btn-sm">Copiar follow-up</button>'
+    + '<button data-accion="nota" data-id="' + id + '" class="btn btn-sm" title="Agregar nota">📝</button>'
     + '<select data-id="' + id + '">' + opciones + '</select>'
     + '</div>'
     + '</div>';
@@ -386,6 +441,7 @@ function render() {
   opcionesRubro(fr);
   var lista = DATA.filter(function (l) {
     if (fe && l.estado !== fe) return false;
+    if (soloVencidos && !esFollowupVencido(l)) return false;
     if (fr && l.rubro !== fr) return false;
     if (soloCel && !l.esCelular) return false;
     if (q) {
@@ -396,15 +452,16 @@ function render() {
   });
   lista.sort(orden === 'fecha' ? byFecha : byScore);
   renderStats();
+  renderBandeja();
   renderAnalytics();
   document.getElementById('cards').innerHTML = lista.map(cardHtml).join('');
   document.getElementById('vacio').className = lista.length ? '' : 'visible';
 }
 
 function exportarCsv() {
-  var cab = ['nombre', 'telefono', 'celular', 'rubro', 'zona', 'estado', 'score', 'rating', 'resenas', 'direccion', 'red', 'fechaAgregado', 'mensaje', 'pitch', 'followup'];
+  var cab = ['nombre', 'telefono', 'celular', 'rubro', 'zona', 'estado', 'score', 'rating', 'resenas', 'direccion', 'red', 'fechaAgregado', 'monto', 'mensual', 'nota', 'urlOnline', 'mensaje', 'pitch', 'followup'];
   var filas = DATA.map(function (l) {
-    return [l.nombre, l.telefono, l.esCelular ? 'si' : 'no', l.rubro, l.zona, l.estado, l.score, l.rating, l.resenas, l.direccion, l.red, l.fechaAgregado, l.mensaje, l.pitch, l.followup]
+    return [l.nombre, l.telefono, l.esCelular ? 'si' : 'no', l.rubro, l.zona, l.estado, l.score, l.rating, l.resenas, l.direccion, l.red, l.fechaAgregado, l.monto, l.mensual, l.nota, l.netlifyUrl, l.mensaje, l.pitch, l.followup]
       .map(function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; })
       .join(';');
   });
@@ -434,7 +491,26 @@ document.getElementById('cards').addEventListener('click', function (ev) {
     publicar(l, el);
   } else if (accion === 'copiar-link') {
     copiar(l.netlifyUrl || '', el);
+  } else if (accion === 'nota') {
+    var v = prompt('Nota para ' + (l.nombre || 'este lead') + ':', l.nota || '');
+    if (v !== null) {
+      l.nota = v;
+      enviarEstado({ id: leadId(l), placeId: l.placeId || '', telefono: l.telefono || '', estado: l.estado || 'nuevo', nota: v, fecha: new Date().toISOString() });
+      render();
+    }
   }
+});
+document.getElementById('bandeja').addEventListener('click', function (ev) {
+  var el = ev.target.closest('[data-bandeja]');
+  if (!el) return;
+  document.getElementById('q').value = '';
+  var fe = document.getElementById('fEstado');
+  soloVencidos = false;
+  var cual = el.getAttribute('data-bandeja');
+  if (cual === 'nuevos') fe.value = 'nuevo';
+  if (cual === 'followups') { fe.value = 'enviado'; soloVencidos = true; }
+  if (cual === 'calientes') fe.value = 'respondio';
+  render();
 });
 document.getElementById('cards').addEventListener('change', function (ev) {
   var sel = ev.target.closest('select[data-id]');
@@ -443,7 +519,10 @@ document.getElementById('cards').addEventListener('change', function (ev) {
 document.getElementById('fEstado').innerHTML = '<option value="">Todos los estados</option>'
   + ESTADOS.map(function (e) { return '<option value="' + e + '">' + NOMBRE_ESTADO[e] + '</option>'; }).join('');
 ['q', 'fEstado', 'fRubro', 'fOrden', 'fCel'].forEach(function (fid) {
-  document.getElementById(fid).addEventListener('input', render);
+  document.getElementById(fid).addEventListener('input', function () {
+    if (fid === 'fEstado') soloVencidos = false;
+    render();
+  });
 });
 document.getElementById('btnRefrescar').addEventListener('click', refrescar);
 document.getElementById('btnCsv').addEventListener('click', exportarCsv);

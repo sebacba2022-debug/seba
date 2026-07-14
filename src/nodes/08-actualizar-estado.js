@@ -29,7 +29,9 @@ for (const u of updates) {
   if (!lead) continue;
   lead.estado = u.estado;
   lead.fechaEstado = u.fecha || ahora;
-  if (u.nota) lead.nota = u.nota;
+  if (u.nota != null) lead.nota = String(u.nota);
+  if (u.monto != null) lead.monto = Number(u.monto) || 0;
+  if (u.mensual != null) lead.mensual = Number(u.mensual) || 0;
   lead.historial = (lead.historial || []).concat([{ fecha: ahora, evento: 'estado:' + u.estado }]);
   aplicados += 1;
 }
