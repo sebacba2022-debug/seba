@@ -12,8 +12,8 @@ const SALIDA = path.join(RAIZ, 'dist');
 
 // Config editable: la marca es SIEMPRE la del negocio que contrata, nunca StubHub.
 const MARCA = {
-  nombre: 'NOMBRE DEL NEGOCIO',
-  tagline: 'Centro de ayuda y reclamos',
+  nombre: 'Centro de Ayuda',
+  tagline: '¿En qué te podemos ayudar?',
   color: '#6d28d9',
   color2: '#4c1d95',
   whatsapp: '5490000000000',
@@ -32,67 +32,99 @@ function esc(s) {
 // -------- PÁGINA PÚBLICA --------
 function portalPublico(m, demoData) {
   const modoDemo = demoData ? JSON.stringify(demoData).replace(/</g, '\\u003c') : 'null';
+  const inicial = esc(m.nombre.trim().charAt(0) || 'A').toUpperCase();
   return `<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(m.nombre)} — ${esc(m.tagline)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+:root { --brand:${m.color}; --brand2:${m.color2}; }
 * { box-sizing: border-box; margin: 0; }
-body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #0b0b12; color: #f4f4f5; line-height: 1.5; }
-.top { background: linear-gradient(160deg, ${m.color}, ${m.color2}); padding: 40px 20px 44px; text-align: center; }
-.top h1 { font-size: clamp(24px, 5vw, 34px); }
-.top p { color: #e9d5ff; margin-top: 6px; }
-.wrap { max-width: 640px; margin: 0 auto; padding: 24px 16px 60px; }
-.tabs { display: flex; gap: 8px; margin: -24px auto 24px; max-width: 640px; padding: 0 16px; position: relative; }
-.tab { flex: 1; background: #16161f; border: 1px solid #26262f; color: #d4d4d8; padding: 12px; border-radius: 12px; cursor: pointer; font-size: 14px; font-weight: 600; }
-.tab.on { background: ${m.color}; color: #fff; border-color: ${m.color}; }
-.card { background: #16161f; border: 1px solid #26262f; border-radius: 16px; padding: 22px; }
-label { display: block; font-size: 13px; color: #a1a1aa; margin: 14px 0 5px; }
-input, textarea, select { width: 100%; background: #0e0e15; border: 1px solid #2b2b36; color: #f4f4f5; border-radius: 10px; padding: 11px 12px; font-size: 14px; font-family: inherit; }
-textarea { min-height: 96px; resize: vertical; }
-.btn { width: 100%; margin-top: 18px; background: ${m.color}; color: #fff; border: 0; padding: 13px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; }
-.btn:hover { filter: brightness(1.1); }
-.hint { font-size: 12px; color: #71717a; margin-top: 8px; text-align: center; }
-.res { margin-top: 18px; border-radius: 12px; padding: 16px; font-size: 14px; display: none; }
-.res.show { display: block; }
-.res.ok { background: #06281c; border: 1px solid #10b98155; }
-.res.err { background: #2a0f14; border: 1px solid #f43f5e55; }
-.res h3 { font-size: 16px; margin-bottom: 8px; }
-.pill { display: inline-block; font-size: 12px; padding: 3px 10px; border-radius: 999px; background: #ffffff1a; margin-top: 4px; }
+body { font-family: 'Inter', system-ui, sans-serif; background: #f6f7fb; color: #1c1c28; line-height: 1.55; }
+h1,h2,h3,.brandfont { font-family: 'Plus Jakarta Sans', sans-serif; }
+.nav { background: #fff; border-bottom: 1px solid #e7e8ef; position: sticky; top: 0; z-index: 30; }
+.nav .inner { max-width: 1080px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; }
+.logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 16px; }
+.logo .mark { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(140deg, var(--brand), var(--brand2)); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 17px; }
+.nav a { color: #5a5a70; text-decoration: none; font-size: 14px; font-weight: 500; }
+.hero { background: linear-gradient(150deg, var(--brand), var(--brand2)); color: #fff; padding: 56px 20px 92px; text-align: center; position: relative; overflow: hidden; }
+.hero .glow { position: absolute; width: 520px; height: 520px; border-radius: 50%; background: #ffffff; opacity: .08; filter: blur(60px); top: -220px; right: -120px; }
+.hero h1 { font-size: clamp(26px, 4.5vw, 40px); font-weight: 800; letter-spacing: -0.5px; position: relative; }
+.hero p { color: #ffffffcc; margin-top: 10px; font-size: 16px; position: relative; }
+.stage { max-width: 680px; margin: -60px auto 0; padding: 0 16px 40px; position: relative; z-index: 10; }
+.tabs { display: flex; gap: 4px; background: #fff; border: 1px solid #e7e8ef; border-radius: 14px; padding: 5px; box-shadow: 0 10px 30px #1c1c2810; }
+.tab { flex: 1; text-align: center; padding: 11px 8px; border-radius: 10px; cursor: pointer; font-size: 13.5px; font-weight: 600; color: #6b6b80; transition: all .15s; }
+.tab.on { background: linear-gradient(140deg, var(--brand), var(--brand2)); color: #fff; box-shadow: 0 6px 16px var(--brand)44; }
+.card { background: #fff; border: 1px solid #e7e8ef; border-radius: 16px; padding: 26px; margin-top: 16px; box-shadow: 0 10px 40px #1c1c280a; }
+.card h2 { font-size: 18px; font-weight: 700; }
+.card .desc { color: #6b6b80; font-size: 14px; margin-top: 4px; margin-bottom: 8px; }
+label { display: block; font-size: 13px; font-weight: 600; color: #3a3a4c; margin: 16px 0 6px; }
+input, textarea, select { width: 100%; background: #fbfbfd; border: 1px solid #dcdce6; color: #1c1c28; border-radius: 11px; padding: 12px 13px; font-size: 14.5px; font-family: inherit; transition: border-color .15s, box-shadow .15s; }
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand)22; }
+textarea { min-height: 104px; resize: vertical; }
+.btn { width: 100%; margin-top: 20px; background: linear-gradient(140deg, var(--brand), var(--brand2)); color: #fff; border: 0; padding: 14px; border-radius: 11px; font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px var(--brand)44; transition: transform .12s; font-family: 'Plus Jakarta Sans', sans-serif; }
+.btn:hover { transform: translateY(-1px); }
+.hint { font-size: 12.5px; color: #9494a6; margin-top: 10px; text-align: center; }
+.res { margin-top: 18px; border-radius: 13px; padding: 18px; font-size: 14px; display: none; }
+.res.show { display: block; animation: pop .2s ease; }
+@keyframes pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.res.ok { background: #eefaf3; border: 1px solid #b7ecd0; color: #0f5132; }
+.res.err { background: #fdecee; border: 1px solid #f6c2c8; color: #842029; }
+.res h3 { font-size: 16px; margin-bottom: 6px; font-weight: 700; }
+.pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; background: var(--brand); color: #fff; margin-top: 4px; }
+.pill.gris { background: #6b6b80; } .pill.amar { background: #d97706; } .pill.verde { background: #059669; } .pill.rojo { background: #dc2626; }
 .oculto { display: none; }
-.wafab { position: fixed; right: 16px; bottom: 16px; background: #22c55e; color: #05130a; font-weight: 700; padding: 12px 18px; border-radius: 999px; text-decoration: none; box-shadow: 0 8px 24px #000a; }
-.resp { border-top: 1px solid #ffffff1a; margin-top: 10px; padding-top: 10px; }
-.resp small { color: #a1a1aa; }
+.pasos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 680px; margin: 26px auto 0; padding: 0 16px; }
+.paso { background: #fff; border: 1px solid #e7e8ef; border-radius: 13px; padding: 16px; text-align: center; }
+.paso .n { width: 30px; height: 30px; border-radius: 50%; background: var(--brand)18; color: var(--brand); font-weight: 800; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; }
+.paso b { font-size: 13.5px; } .paso span { display: block; font-size: 11.5px; color: #9494a6; margin-top: 2px; }
+.resp { border-top: 1px solid #00000012; margin-top: 12px; padding-top: 12px; }
+.resp small { color: #6b6b80; font-weight: 600; }
+footer { text-align: center; color: #9494a6; font-size: 12.5px; padding: 40px 20px 60px; }
+.wafab { position: fixed; right: 18px; bottom: 18px; background: #25d366; color: #fff; font-weight: 700; padding: 13px 20px; border-radius: 999px; text-decoration: none; box-shadow: 0 8px 24px #0003; font-size: 14px; z-index: 40; }
+@media (max-width:520px){ .pasos{ grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
-<header class="top">
-  <h1>${esc(m.nombre)}</h1>
-  <p>${esc(m.tagline)}</p>
+<nav class="nav"><div class="inner">
+  <div class="logo"><span class="mark">${inicial}</span><span>${esc(m.nombre)}</span></div>
+  <a href="https://wa.me/${esc(m.whatsapp)}">Contacto</a>
+</div></nav>
+
+<header class="hero">
+  <div class="glow"></div>
+  <h1>${esc(m.tagline)}</h1>
+  <p>Consultá tu compra, hacé un reclamo o seguí su estado. Te respondemos rápido.</p>
 </header>
 
-<div class="tabs">
-  <div class="tab on" data-tab="consulta">Consultar mi compra</div>
-  <div class="tab" data-tab="reclamo">Hacer un reclamo</div>
-  <div class="tab" data-tab="seguir">Seguir mi reclamo</div>
-</div>
+<div class="stage">
+  <div class="tabs">
+    <div class="tab on" data-tab="consulta">Consultar compra</div>
+    <div class="tab" data-tab="reclamo">Hacer un reclamo</div>
+    <div class="tab" data-tab="seguir">Seguir reclamo</div>
+  </div>
 
-<div class="wrap">
   <!-- CONSULTA DE COMPRA -->
   <div class="card pane" data-pane="consulta">
+    <h2>Consultá el estado de tu compra</h2>
+    <p class="desc">Ingresá los datos tal como figuran en tu confirmación.</p>
     <label>Número de orden</label>
     <input id="c_orden" placeholder="Ej: ORD-12345">
     <label>Email de la compra</label>
     <input id="c_email" type="email" placeholder="tu@email.com">
     <button class="btn" data-do="consultarOrden">Ver estado de mi compra</button>
-    <p class="hint">Ingresá los datos tal como figuran en tu confirmación de compra.</p>
     <div class="res" id="c_res"></div>
   </div>
 
   <!-- NUEVO RECLAMO -->
   <div class="card pane oculto" data-pane="reclamo">
+    <h2>Contanos qué pasó</h2>
+    <p class="desc">Completá el formulario y te damos un código para seguir tu reclamo.</p>
     <label>Nombre y apellido</label>
     <input id="r_nombre" placeholder="Tu nombre">
     <label>Email</label>
@@ -107,23 +139,32 @@ textarea { min-height: 96px; resize: vertical; }
       <option>Datos incorrectos en mi compra</option>
       <option>Otra consulta</option>
     </select>
-    <label>Contanos qué pasó</label>
-    <textarea id="r_mensaje" placeholder="Descripción del problema"></textarea>
+    <label>Detalle del problema</label>
+    <textarea id="r_mensaje" placeholder="Contanos con el mayor detalle posible"></textarea>
     <button class="btn" data-do="crearReclamo">Enviar reclamo</button>
     <div class="res" id="r_res"></div>
   </div>
 
   <!-- SEGUIMIENTO -->
   <div class="card pane oculto" data-pane="seguir">
+    <h2>Seguí tu reclamo</h2>
+    <p class="desc">Con el código que te dimos ves el estado y nuestras respuestas.</p>
     <label>Código de reclamo</label>
     <input id="s_codigo" placeholder="Ej: R-2026-0001">
     <button class="btn" data-do="seguirReclamo">Ver estado de mi reclamo</button>
-    <p class="hint">El código te lo dimos cuando enviaste tu reclamo.</p>
     <div class="res" id="s_res"></div>
   </div>
 </div>
 
-<a class="wafab" href="https://wa.me/${esc(m.whatsapp)}">💬 WhatsApp</a>
+<div class="pasos">
+  <div class="paso"><div class="n">1</div><b>Enviás tu consulta</b><span>Compra o reclamo, en 1 minuto</span></div>
+  <div class="paso"><div class="n">2</div><b>Recibís un código</b><span>Para seguir el estado</span></div>
+  <div class="paso"><div class="n">3</div><b>Te respondemos</b><span>Por acá y por email</span></div>
+</div>
+
+<footer>${esc(m.nombre)} · ${esc(m.tagline)} · Todos los derechos reservados</footer>
+
+<a class="wafab" href="https://wa.me/${esc(m.whatsapp)}">💬 Escribinos</a>
 
 <script>
 var CFG = {
@@ -132,10 +173,12 @@ var CFG = {
 };
 var DEMO = ${modoDemo};
 var ESTADO_TXT = { recibido: 'Recibido', en_proceso: 'En proceso', resuelto: 'Resuelto', cerrado: 'Cerrado', confirmada: 'Confirmada', pendiente: 'Pago pendiente', entregada: 'Entregada', cancelada: 'Cancelada' };
+var ESTADO_COLOR = { recibido: '', en_proceso: 'amar', resuelto: 'verde', cerrado: 'gris', confirmada: 'verde', entregada: 'verde', pendiente: 'amar', cancelada: 'rojo' };
 
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];});}
 function $(id){return document.getElementById(id);}
 function mostrar(id, ok, html){var e=$(id);e.className='res show '+(ok?'ok':'err');e.innerHTML=html;}
+function pill(estado){return '<span class="pill '+(ESTADO_COLOR[estado]||'')+'">'+(ESTADO_TXT[estado]||esc(estado))+'</span>';}
 
 document.querySelector('.tabs').addEventListener('click', function(ev){
   var t=ev.target.closest('.tab'); if(!t)return;
@@ -161,13 +204,13 @@ function demoResolver(tipo, d){
   return v?{ok:true,tipo:'orden',orden:v.orden,estado:v.estado,evento:v.evento,cantidad:v.cantidad,fecha:v.fecha,detalle:v.detalle}:{ok:false,error:'No encontramos una compra con esos datos.'};
 }
 
-document.querySelector('.wrap').addEventListener('click', function(ev){
+document.querySelector('.stage').addEventListener('click', function(ev){
   var b=ev.target.closest('[data-do]'); if(!b)return;
   var accion=b.getAttribute('data-do');
   if(accion==='consultarOrden'){
     pedir('consultar',{orden:$('c_orden').value.trim(),email:$('c_email').value.trim()}).then(function(d){
       if(!d.ok)return mostrar('c_res',false,esc(d.error));
-      mostrar('c_res',true,'<h3>Orden '+esc(d.orden)+'</h3><span class="pill">'+(ESTADO_TXT[d.estado]||esc(d.estado))+'</span>'+(d.evento?'<p style="margin-top:8px">'+esc(d.evento)+(d.cantidad?' · '+d.cantidad+' entrada(s)':'')+'</p>':'')+(d.detalle?'<p style="margin-top:4px;color:#a1a1aa">'+esc(d.detalle)+'</p>':''));
+      mostrar('c_res',true,'<h3>Orden '+esc(d.orden)+'</h3>'+pill(d.estado)+(d.evento?'<p style="margin-top:10px;font-weight:600">'+esc(d.evento)+(d.cantidad?' · '+d.cantidad+' entrada(s)':'')+'</p>':'')+(d.detalle?'<p style="margin-top:4px">'+esc(d.detalle)+'</p>':''));
     });
   }
   if(accion==='crearReclamo'){
@@ -182,7 +225,7 @@ document.querySelector('.wrap').addEventListener('click', function(ev){
     pedir('consultar',{codigo:$('s_codigo').value.trim()}).then(function(d){
       if(!d.ok)return mostrar('s_res',false,esc(d.error));
       var resp=(d.respuestas||[]).map(function(r){return '<div class="resp"><small>'+esc((r.fecha||'').slice(0,10))+'</small><p>'+esc(r.texto)+'</p></div>';}).join('');
-      mostrar('s_res',true,'<h3>'+esc(d.codigo)+'</h3><span class="pill">'+(ESTADO_TXT[d.estado]||esc(d.estado))+'</span><p style="margin-top:8px;color:#a1a1aa">'+esc(d.asunto||'')+'</p>'+(resp||'<p style="margin-top:8px;color:#71717a">Todavía sin respuestas. Te avisamos apenas haya novedades.</p>'));
+      mostrar('s_res',true,'<h3>'+esc(d.codigo)+'</h3>'+pill(d.estado)+'<p style="margin-top:10px;font-weight:600">'+esc(d.asunto||'')+'</p>'+(resp||'<p style="margin-top:10px">Todavía sin respuestas. Te avisamos apenas haya novedades.</p>'));
     });
   }
 });
@@ -194,46 +237,66 @@ document.querySelector('.wrap').addEventListener('click', function(ev){
 // -------- PANEL INTERNO --------
 function panelReclamos(m, demoData) {
   const modoDemo = demoData ? JSON.stringify(demoData.reclamos).replace(/</g, '\\u003c') : 'null';
+  const inicial = esc(m.nombre.trim().charAt(0) || 'A').toUpperCase();
   return `<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Panel de reclamos — ${esc(m.nombre)}</title>
+<title>Panel de soporte — ${esc(m.nombre)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+:root { --brand:${m.color}; --brand2:${m.color2}; }
 * { box-sizing: border-box; margin: 0; }
-body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #09090b; color: #f4f4f5; }
-.wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
-h1 { font-size: 22px; }
-.sub { color: #a1a1aa; font-size: 13px; margin-top: 3px; }
-#stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap: 8px; margin: 18px 0; }
-.stat { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 10px 12px; }
-.stat b { font-size: 20px; } .stat span { display:block; font-size: 11px; color:#a1a1aa; }
-.filtros { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-select, input, button, textarea { background:#18181b; border:1px solid #27272a; color:#f4f4f5; border-radius:8px; padding:8px 10px; font-size:13px; font-family:inherit; }
-.card { background:#18181b; border:1px solid #27272a; border-radius:12px; padding:16px; margin-bottom:12px; }
-.card.alta { border-left: 3px solid #f43f5e; }
-.row { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:center; }
-.cod { font-weight:700; } .meta{ font-size:12px; color:#a1a1aa; }
-.badge{ font-size:11px; padding:2px 9px; border-radius:999px; }
-.b-recibido{background:rgba(14,165,233,.15);color:#7dd3fc;} .b-en_proceso{background:rgba(245,158,11,.15);color:#fcd34d;}
-.b-resuelto{background:rgba(16,185,129,.15);color:#6ee7b7;} .b-cerrado{background:rgba(113,113,122,.2);color:#d4d4d8;}
-.b-alta{background:rgba(244,63,94,.15);color:#fda4af;}
-.msg{ margin:10px 0; font-size:14px; color:#e4e4e7; white-space:pre-wrap; background:#0e0e15; border-radius:8px; padding:10px; }
-.acc{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; align-items:center; }
-.btn{ background:${m.color}; border:0; font-weight:600; cursor:pointer; }
+body { font-family: 'Inter', system-ui, sans-serif; background: #f6f7fb; color: #1c1c28; }
+h1,h2,h3,.brandfont { font-family: 'Plus Jakarta Sans', sans-serif; }
+.nav { background:#fff; border-bottom:1px solid #e7e8ef; }
+.nav .inner { max-width:1160px; margin:0 auto; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; }
+.logo { display:flex; align-items:center; gap:10px; font-weight:800; }
+.logo .mark { width:32px; height:32px; border-radius:8px; background:linear-gradient(140deg,var(--brand),var(--brand2)); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; }
+.logo small { display:block; font-weight:500; font-size:11px; color:#9494a6; }
+#sync { font-size:12.5px; color:#6b6b80; }
+.wrap { max-width:1160px; margin:0 auto; padding:24px 20px 60px; }
+#stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; margin-bottom:20px; }
+.stat { background:#fff; border:1px solid #e7e8ef; border-radius:14px; padding:14px 16px; box-shadow:0 4px 14px #1c1c2808; }
+.stat b { font-size:26px; font-weight:800; } .stat span { display:block; font-size:12px; color:#9494a6; margin-top:2px; }
+.stat.urg b { color:#dc2626; }
+.filtros { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; align-items:center; }
+select, input, button, textarea { background:#fff; border:1px solid #dcdce6; color:#1c1c28; border-radius:10px; padding:10px 12px; font-size:13.5px; font-family:inherit; }
+input:focus, select:focus, textarea:focus { outline:none; border-color:var(--brand); box-shadow:0 0 0 3px var(--brand)22; }
+.chk { display:flex; align-items:center; gap:7px; font-size:13.5px; color:#3a3a4c; background:#fff; border:1px solid #dcdce6; border-radius:10px; padding:9px 12px; }
+.card { background:#fff; border:1px solid #e7e8ef; border-radius:16px; padding:20px; margin-bottom:14px; box-shadow:0 4px 14px #1c1c2808; }
+.card.alta { border-left:4px solid #dc2626; }
+.row { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-start; }
+.cod { font-weight:800; font-size:15.5px; font-family:'Plus Jakarta Sans',sans-serif; }
+.meta { font-size:12.5px; color:#9494a6; margin-top:2px; }
+.badge { font-size:11.5px; font-weight:700; padding:4px 11px; border-radius:999px; }
+.b-recibido{background:#e0f2fe;color:#075985;} .b-en_proceso{background:#fef3c7;color:#92400e;}
+.b-resuelto{background:#dcfce7;color:#166534;} .b-cerrado{background:#ececef;color:#52525b;}
+.b-alta{background:#fee2e2;color:#991b1b;}
+.msg { margin:12px 0; font-size:14px; color:#3a3a4c; white-space:pre-wrap; background:#f8f8fb; border:1px solid #ececf2; border-radius:10px; padding:12px 14px; }
+.resline { font-size:13px; color:#3a3a4c; margin-top:6px; padding-left:14px; border-left:2px solid var(--brand)55; }
+.resline small { color:#9494a6; }
+.acc { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; align-items:center; }
+.btn { background:linear-gradient(140deg,var(--brand),var(--brand2)); color:#fff; border:0; font-weight:700; cursor:pointer; box-shadow:0 6px 14px var(--brand)33; }
+.btn.ghost { background:#f1f1f6; color:#3a3a4c; box-shadow:none; text-decoration:none; display:inline-block; }
+.vacio { text-align:center; color:#9494a6; padding:50px; background:#fff; border:1px dashed #dcdce6; border-radius:16px; }
 </style>
 </head>
 <body>
+<nav class="nav"><div class="inner">
+  <div class="logo"><span class="mark">${inicial}</span><span>${esc(m.nombre)}<small>Panel de soporte</small></span></div>
+  <span id="sync">Cargando…</span>
+</div></nav>
 <div class="wrap">
-  <h1>Panel de reclamos — ${esc(m.nombre)}</h1>
-  <p class="sub" id="sync">Cargando…</p>
   <div id="stats"></div>
   <div class="filtros">
-    <input id="q" placeholder="Buscar código, nombre, email…" style="flex:1;min-width:200px">
-    <select id="fEstado"><option value="">Todos</option><option>recibido</option><option>en_proceso</option><option>resuelto</option><option>cerrado</option></select>
-    <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="fAlta"> Solo prioridad alta</label>
-    <button class="btn" id="btnRefrescar">Refrescar</button>
+    <input id="q" placeholder="Buscar código, nombre, email…" style="flex:1;min-width:220px">
+    <select id="fEstado"><option value="">Todos los estados</option><option value="recibido">Recibido</option><option value="en_proceso">En proceso</option><option value="resuelto">Resuelto</option><option value="cerrado">Cerrado</option></select>
+    <label class="chk"><input type="checkbox" id="fAlta"> Solo urgentes</label>
+    <button class="btn" id="btnRefrescar" style="padding:10px 16px">Refrescar</button>
   </div>
   <div id="lista"></div>
 </div>
@@ -262,7 +325,7 @@ function actualizar(codigo, campos){
 function stats(){
   var c={total:DATA.length,recibido:0,en_proceso:0,resuelto:0,alta:0};
   DATA.forEach(function(x){if(c[x.estado]!=null)c[x.estado]++;if(x.prioridad==='alta'&&x.estado!=='cerrado'&&x.estado!=='resuelto')c.alta++;});
-  document.getElementById('stats').innerHTML=[['Total',c.total],['Recibidos',c.recibido],['En proceso',c.en_proceso],['Resueltos',c.resuelto],['⚠ Urgentes',c.alta]].map(function(t){return '<div class="stat"><b>'+t[1]+'</b><span>'+t[0]+'</span></div>';}).join('');
+  document.getElementById('stats').innerHTML=[['Total',c.total,''],['Recibidos',c.recibido,''],['En proceso',c.en_proceso,''],['Resueltos',c.resuelto,''],['Urgentes sin resolver',c.alta,'urg']].map(function(t){return '<div class="stat '+t[2]+'"><b>'+t[1]+'</b><span>'+t[0]+'</span></div>';}).join('');
 }
 function render(){
   stats();
@@ -275,20 +338,20 @@ function render(){
     if(q&&((x.codigo||'')+' '+(x.nombre||'')+' '+(x.email||'')).toLowerCase().indexOf(q)<0)return false;
     return true;
   }).sort(function(a,b){ if((a.prioridad==='alta')!==(b.prioridad==='alta'))return a.prioridad==='alta'?-1:1; return String(b.creado||'').localeCompare(String(a.creado||'')); });
-  document.getElementById('lista').innerHTML=lista.map(cardHtml).join('')||'<p style="color:#71717a;text-align:center;padding:30px">No hay reclamos que coincidan.</p>';
+  document.getElementById('lista').innerHTML=lista.map(cardHtml).join('')||'<div class="vacio">No hay reclamos que coincidan con el filtro.</div>';
 }
 function cardHtml(x){
   var opts=['recibido','en_proceso','resuelto','cerrado'].map(function(e){return '<option value="'+e+'"'+(x.estado===e?' selected':'')+'>'+TXT[e]+'</option>';}).join('');
-  var resp=(x.respuestas||[]).map(function(r){return '<div class="meta" style="margin-top:6px">↳ '+esc(r.texto)+'</div>';}).join('');
+  var resp=(x.respuestas||[]).map(function(r){return '<div class="resline"><small>'+esc((r.fecha||'').slice(0,10))+' — vos:</small> '+esc(r.texto)+'</div>';}).join('');
   return '<div class="card'+(x.prioridad==='alta'?' alta':'')+'">'
-    +'<div class="row"><span class="cod">'+esc(x.codigo)+' · '+esc(x.asunto||'')+'</span>'
+    +'<div class="row"><div><span class="cod">'+esc(x.codigo)+'</span> <span style="color:#6b6b80">'+esc(x.asunto||'')+'</span>'
+    +'<div class="meta">'+esc(x.nombre||'')+' · '+esc(x.email||'')+(x.orden?' · orden '+esc(x.orden):'')+'</div></div>'
     +'<span><span class="badge b-'+esc(x.estado)+'">'+(TXT[x.estado]||esc(x.estado))+'</span>'+(x.prioridad==='alta'?' <span class="badge b-alta">urgente</span>':'')+'</span></div>'
-    +'<div class="meta">'+esc(x.nombre||'')+' · '+esc(x.email||'')+(x.orden?' · orden '+esc(x.orden):'')+'</div>'
     +'<div class="msg">'+esc(x.mensaje||'')+'</div>'+resp
-    +'<div class="acc"><a class="badge b-recibido" style="text-decoration:none" href="https://wa.me/'+(String(x.telefono||'').replace(/\\D/g,''))+'" target="_blank">Contactar</a>'
-    +'<select data-cod="'+esc(x.codigo)+'" data-k="estado">'+opts+'</select>'
-    +'<input data-cod="'+esc(x.codigo)+'" data-k="respuesta" placeholder="Escribir respuesta al cliente…" style="flex:1;min-width:180px">'
-    +'<button class="btn" data-send="'+esc(x.codigo)+'">Responder</button></div>'
+    +'<div class="acc">'
+    +'<select data-cod="'+esc(x.codigo)+'" data-k="estado" style="padding:9px 12px">'+opts+'</select>'
+    +'<input data-cod="'+esc(x.codigo)+'" data-k="respuesta" placeholder="Escribir respuesta al cliente…" style="flex:1;min-width:200px;padding:9px 12px">'
+    +'<button class="btn" data-send="'+esc(x.codigo)+'" style="padding:9px 18px">Responder</button></div>'
     +'</div>';
 }
 document.getElementById('lista').addEventListener('change',function(ev){var s=ev.target.closest('select[data-cod]');if(s)actualizar(s.getAttribute('data-cod'),{estado:s.value});});
