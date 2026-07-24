@@ -4,16 +4,17 @@
 > Lo marcado como "detectado del repo" es contexto inferido del proyecto Impulso Web y
 > debe ser confirmado o corregido por Seba.
 
-## Contexto detectado del repo (a confirmar)
+## Contexto detectado del repo (actualizado 2026-07-24)
 
-- **Negocio actual**: Impulso Web — agencia de diseño web en Córdoba, Argentina.
-  - Producto: landing pages a **$170.000 ARS**, 50% de seña, entrega en 48 hs.
-  - Venta: prospección B2B automatizada (Google Places API) → mensajes personalizados
-    con Gemini → contacto manual por WhatsApp (20–40 mensajes/día) → demo real como cierre.
-  - Stack técnico demostrado: n8n, JavaScript (Node), APIs (Google Places, Gemini),
-    automatización de pipelines, dashboards HTML autocontenidos, Netlify.
-- **Segundo proyecto en el repo**: portal de reclamos (nodos n8n: crear/consultar/actualizar
-  reclamo) — a confirmar si es para un cliente o interno.
+- **Impulso Web (agencia de diseño web, Córdoba): CERRADO / ABANDONADO.**
+  Confirmado por Seba: "se cayó para siempre". No se construye ninguna estrategia sobre
+  este negocio. Motivo del cierre: _pendiente de respuesta_ (dato clave para el diagnóstico:
+  si murió por falta de ventas, falta de tiempo, o falta de constancia, cambia el plan).
+- **Habilidades técnicas demostradas en el repo** (esto NO murió con el negocio):
+  n8n, JavaScript (Node), integración de APIs (Google Places, Gemini), automatización de
+  pipelines, scoring de leads, dashboards HTML autocontenidos, Netlify, prompts de venta.
+- **Segundo proyecto en el repo**: portal de reclamos (nodos n8n) — a confirmar si fue
+  para un cliente o interno.
 - **País**: Argentina (Córdoba) → aplica análisis de inflación alta, brecha cambiaria,
   instrumentos dolarizados y riesgo de licuación en ARS.
 
