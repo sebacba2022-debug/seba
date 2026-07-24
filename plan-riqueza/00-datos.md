@@ -33,26 +33,35 @@
 | 9 | Objetivo | USD 20.000 — **sin plazo definido** (pendiente) |
 | 10 | Gastos fijos / dependientes | ARS 1.500.000/mes, sin gente a cargo |
 
-## ⚠️ NOTA CRÍTICA — Fuente de ingresos sin aclarar
+## ⚠️ NOTA CRÍTICA — Fuente de ingresos = activo en llamas (riesgo penal)
 
-"Pagos de servicios a mitad de precio" es, en el mercado argentino, el nombre comercial
-típico de esquemas basados en tarjetas/cuentas robadas o puntos hackeados (carding).
-**Pendiente de aclaración de Seba: cómo funciona exactamente su operación.**
+**Mecanismo declarado por Seba**: "Compro giftcards para servicios al por mayor a un
+precio bajo y con esos cupones pago los servicios a mitad de precio."
 
-Regla de este plan (definida en el mandato original): ético, legal y sostenible.
-- Si la fuente es ilegal o gris: NO es un ingreso, es un pasivo penal. El plan entero
-  pivotea a "reemplazar esa fuente por ingreso legal en el menor tiempo posible" y
-  ningún número del plan la cuenta como base.
-- Si es legítima (explicación verificable del mecanismo): se documenta acá el mecanismo
-  y su riesgo de continuidad antes de construir nada encima.
+**Análisis económico**: para cobrar 50% de una factura y pagarla entera, el costo de las
+giftcards debe ser <50% del valor nominal. El mercado legítimo de reventa de giftcards
+opera con 5–15% de descuento, nunca 50%+. El único origen que provee giftcards de
+servicios al 50%+ de descuento "al por mayor" de forma sostenida es el fraude con
+tarjetas/cuentas robadas (carding), liquidado barato en mercados secundarios. El
+descuento profundo ES la firma del origen ilícito.
 
-## Inconsistencias a resolver antes de la Fase 1
+**Riesgo legal**: aunque Seba no robe las tarjetas, comprar y usar instrumentos a precio
+que delata origen ilícito configura encubrimiento/receptación (art. 277 CP) y, por
+volumen, puede escalar a lavado (art. 303). Desenlace típico: cuentas embargadas + causa
+penal + cero patrimonio.
 
-1. Mecanismo real de la fuente de ingresos (ver nota crítica).
-2. Ingreso 2M − gastos 1,5M = ~500k/mes de excedente teórico, pero declara capital
-   invertible cero y solo 500k ahorrados. ¿A dónde va la diferencia?
-3. Plazo del objetivo de USD 20.000.
-4. % de ingresos en USD (presumo 0%) y nivel de inglés.
+**Decisión del plan (fija)**: este ingreso NO se cuenta como base de riqueza. Se trata
+como activo en extinción con fecha de vencimiento. **Prioridad #1 del plan: reemplazarlo
+por ingreso limpio en el menor tiempo posible.** Si Seba prueba un proveedor mayorista
+legal con margen real, se reevalúa.
+
+## Inconsistencias resueltas / pendientes
+
+1. Mecanismo de ingresos: RESUELTO (ver nota crítica) — fuente gris/ilegal, se reemplaza.
+2. Excedente: RESUELTO — el ~500k "sobrante" se va en alquiler + expensas + comida.
+   Excedente real actual ≈ CERO. Consume ~100% del ingreso.
+3. Plazo objetivo USD 20.000: asumido **24 meses** como hipótesis de trabajo (a confirmar).
+4. % ingresos en USD: presumido 0% (100% ARS). Nivel de inglés: sin dato (pendiente).
 
 ## Registro de actualizaciones
 
