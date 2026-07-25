@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Árbol de skills de la clase Cronomante (classId 190).
+     Formato: L2J Mobius, data/skillTrees/. Define a qué nivel se aprende
+     cada skill y cuánto SP cuesta. -->
+<list xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../xsd/skillTrees.xsd">
+	<skillTree type="classSkillTree" classId="190">
+		<!-- Nivel 40: kit inicial al cambiar de clase -->
+		<skill skillName="Distorsion Temporal" skillId="50000" skillLevel="1" getLevel="40" levelUpSp="85000" />
+		<skill skillName="Acelerar" skillId="50001" skillLevel="1" getLevel="40" levelUpSp="85000" />
+		<skill skillName="Ralentizar" skillId="50002" skillLevel="1" getLevel="40" levelUpSp="70000" />
+		<!-- Niveles 42-48: herramientas de control y sostén -->
+		<skill skillName="Rebobinar" skillId="50004" skillLevel="1" getLevel="42" levelUpSp="90000" />
+		<skill skillName="Paradoja" skillId="50003" skillLevel="1" getLevel="44" levelUpSp="110000" />
+		<skill skillName="Bucle Infinito" skillId="50006" skillLevel="1" getLevel="44" levelUpSp="100000" />
+		<skill skillName="Salto Temporal" skillId="50005" skillLevel="1" getLevel="46" levelUpSp="120000" />
+		<skill skillName="Escudo de Eras" skillId="50007" skillLevel="1" getLevel="46" levelUpSp="120000" />
+		<!-- Niveles 52-56: segundo rango -->
+		<skill skillName="Distorsion Temporal" skillId="50000" skillLevel="2" getLevel="52" levelUpSp="200000" />
+		<skill skillName="Acelerar" skillId="50001" skillLevel="2" getLevel="52" levelUpSp="200000" />
+		<skill skillName="Ralentizar" skillId="50002" skillLevel="2" getLevel="52" levelUpSp="160000" />
+		<skill skillName="Rebobinar" skillId="50004" skillLevel="2" getLevel="54" levelUpSp="220000" />
+		<skill skillName="Paradoja" skillId="50003" skillLevel="2" getLevel="54" levelUpSp="260000" />
+		<skill skillName="Bucle Infinito" skillId="50006" skillLevel="2" getLevel="54" levelUpSp="240000" />
+		<skill skillName="Escudo de Eras" skillId="50007" skillLevel="2" getLevel="56" levelUpSp="280000" />
+		<!-- Nivel 58-60: ultimates -->
+		<skill skillName="Detener el Tiempo" skillId="50008" skillLevel="1" getLevel="58" levelUpSp="450000" />
+		<skill skillName="Era del Caos" skillId="50009" skillLevel="1" getLevel="60" levelUpSp="500000" />
+		<!-- Niveles 62-72: rango final -->
+		<skill skillName="Distorsion Temporal" skillId="50000" skillLevel="3" getLevel="62" levelUpSp="600000" />
+		<skill skillName="Acelerar" skillId="50001" skillLevel="3" getLevel="62" levelUpSp="600000" />
+		<skill skillName="Ralentizar" skillId="50002" skillLevel="3" getLevel="62" levelUpSp="500000" />
+		<skill skillName="Rebobinar" skillId="50004" skillLevel="3" getLevel="64" levelUpSp="650000" />
+		<skill skillName="Paradoja" skillId="50003" skillLevel="3" getLevel="64" levelUpSp="700000" />
+		<skill skillName="Bucle Infinito" skillId="50006" skillLevel="3" getLevel="64" levelUpSp="650000" />
+		<skill skillName="Escudo de Eras" skillId="50007" skillLevel="3" getLevel="66" levelUpSp="750000" />
+		<skill skillName="Detener el Tiempo" skillId="50008" skillLevel="2" getLevel="70" levelUpSp="900000" />
+		<skill skillName="Era del Caos" skillId="50009" skillLevel="2" getLevel="72" levelUpSp="1000000" />
+	</skillTree>
+</list>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Items de quest custom (ids 57000-57002).
+     Formato: L2J Mobius, data/stats/items/. -->
+<list xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../xsd/items.xsd">
+	<item id="57000" name="Fragmento del Relicario" type="EtcItem">
+		<set name="icon" val="icon.etc_piece_of_crystal_gold_i00" />
+		<set name="material" val="CRYSTAL" />
+		<set name="is_stackable" val="true" />
+		<set name="is_questitem" val="true" />
+	</item>
+	<item id="57001" name="Eco Temporal" type="EtcItem">
+		<set name="icon" val="icon.etc_spirit_bead_i00" />
+		<set name="material" val="LIQUID" />
+		<set name="is_stackable" val="true" />
+		<set name="is_questitem" val="true" />
+	</item>
+	<item id="57002" name="Arena del Tiempo" type="EtcItem">
+		<set name="icon" val="icon.etc_powder_yellow_i00" />
+		<set name="material" val="DUST" />
+		<set name="is_stackable" val="true" />
+		<set name="is_questitem" val="true" />
+	</item>
+</list>

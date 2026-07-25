@@ -1,0 +1,35 @@
+; Fragmentos para pegar en system/user.ini y system/L2.ini del cliente
+; (abrir con L2FileEdit). Sube nitidez, distancia de visión y calidad
+; de texturas al máximo que soporta el motor.
+
+; ---------- L2.ini ----------
+[D3DDrv.D3DRenderDevice]
+DetailTextures=True
+HighDetailActors=True
+SuperHighDetailActors=True
+UsePrecaching=True
+UseTrilinear=True          ; filtrado trilinear: texturas nítidas a distancia
+UseTripleBuffering=True
+UseCompressedLightmaps=False
+ReduceMouseLag=True
+UseVSync=True
+
+[WinDrv.WindowsClient]
+TextureDetailInterface=UltraHigh
+TextureDetailTerrain=UltraHigh
+TextureDetailWeaponSkin=UltraHigh
+TextureDetailPlayerSkin=UltraHigh
+TextureDetailWorld=UltraHigh
+TextureDetailRenderMap=UltraHigh
+TextureDetailLightmap=UltraHigh
+NoFractalAnim=False
+Decals=True
+Coronas=True
+ScreenFlashes=True
+
+; ---------- user.ini ----------
+[Engine.LevelInfo]
+VisibleDistance=3.0        ; distancia de visión (1.0 default; 3.0 = ves todo el mapa)
+
+[Engine.PlayerController]
+FullScreenViewDistance=3.0
