@@ -1,0 +1,27 @@
+skill_id	skill_level	name	desc	desc_param
+50000	1	Distorsión Temporal	Comprime el tiempo alrededor del enemigo y le inflige $s1 de daño mágico.	55
+50000	2	Distorsión Temporal	Comprime el tiempo alrededor del enemigo y le inflige $s1 de daño mágico.	78
+50000	3	Distorsión Temporal	Comprime el tiempo alrededor del enemigo y le inflige $s1 de daño mágico.	101
+50001	1	Acelerar	Acelera el flujo temporal del grupo: +$s1% de velocidad de ataque y casteo durante 20 min.	15
+50001	2	Acelerar	Acelera el flujo temporal del grupo: +$s1% de velocidad de ataque y casteo durante 20 min.	25
+50001	3	Acelerar	Acelera el flujo temporal del grupo: +$s1% de velocidad de ataque y casteo durante 20 min.	33
+50002	1	Ralentizar	Espesa el tiempo alrededor del enemigo: -$s1% de velocidad durante 30 seg.	20
+50002	2	Ralentizar	Espesa el tiempo alrededor del enemigo: -$s1% de velocidad durante 30 seg.	30
+50002	3	Ralentizar	Espesa el tiempo alrededor del enemigo: -$s1% de velocidad durante 30 seg.	40
+50003	1	Paradoja	Colapsa dos instantes en uno: aturde a los enemigos cercanos durante 5 seg.	0
+50003	2	Paradoja	Colapsa dos instantes en uno: aturde a los enemigos cercanos durante 5 seg.	0
+50003	3	Paradoja	Colapsa dos instantes en uno: aturde a los enemigos cercanos durante 5 seg.	0
+50004	1	Rebobinar	Devuelve el cuerpo del aliado a un instante anterior: restaura $s1 de HP.	380
+50004	2	Rebobinar	Devuelve el cuerpo del aliado a un instante anterior: restaura $s1 de HP.	560
+50004	3	Rebobinar	Devuelve el cuerpo del aliado a un instante anterior: restaura $s1 de HP.	750
+50005	1	Salto Temporal	Salta un instante hacia adelante: teletransporte corto instantáneo.	0
+50006	1	Bucle Infinito	Atrapa al enemigo en un bucle: daño mágico sostenido durante 15 seg.	35
+50006	2	Bucle Infinito	Atrapa al enemigo en un bucle: daño mágico sostenido durante 15 seg.	55
+50006	3	Bucle Infinito	Atrapa al enemigo en un bucle: daño mágico sostenido durante 15 seg.	75
+50007	1	Escudo de Eras	Envuelve al Cronomante en capas de tiempo: absorbe $s1 de daño durante 60 seg.	800
+50007	2	Escudo de Eras	Envuelve al Cronomante en capas de tiempo: absorbe $s1 de daño durante 60 seg.	1500
+50007	3	Escudo de Eras	Envuelve al Cronomante en capas de tiempo: absorbe $s1 de daño durante 60 seg.	2500
+50008	1	Detener el Tiempo	Congela el tiempo en el área: inmoviliza a todos los enemigos cercanos 8 seg.	0
+50008	2	Detener el Tiempo	Congela el tiempo en el área: inmoviliza a todos los enemigos cercanos 8 seg.	0
+50009	1	Era del Caos	Desata todas las eras a la vez: daño mágico masivo ($s1 de poder) en área.	140
+50009	2	Era del Caos	Desata todas las eras a la vez: daño mágico masivo ($s1 de poder) en área.	190

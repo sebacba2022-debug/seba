@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Clase custom 190: Cronomante (maga del tiempo, 3ra profesión custom sobre rama mystic).
+     Formato: L2J Mobius, data/stats/chars/baseStats/. -->
+<list xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../xsd/playerClassData.xsd">
+	<class classId="190" name="Cronomante" parentClassId="94" isMage="true">
+		<!-- Atributos base: perfil de mago nuker/control, INT y WIT altos -->
+		<baseAttributes>
+			<int>41</int>
+			<str>22</str>
+			<con>27</con>
+			<men>39</men>
+			<dex>21</dex>
+			<wit>20</wit>
+		</baseAttributes>
+		<!-- Stats de combate base al crear/cambiar a la clase -->
+		<basePAtk>3</basePAtk>
+		<baseCritRate>4</baseCritRate>
+		<baseAtkType>FIST</baseAtkType>
+		<basePAtkSpd>300</basePAtkSpd>
+		<basePDef>
+			<chest>15</chest>
+			<legs>8</legs>
+			<head>7</head>
+			<feet>5</feet>
+			<gloves>4</gloves>
+			<underwear>13</underwear>
+			<cloak>1</cloak>
+		</basePDef>
+		<baseMAtk>6</baseMAtk>
+		<baseMDef>
+			<rear>9</rear>
+			<lear>9</lear>
+			<rfinger>5</rfinger>
+			<lfinger>5</lfinger>
+			<neck>13</neck>
+		</baseMDef>
+		<baseCanPenetrate>0</baseCanPenetrate>
+		<baseAtkRange>20</baseAtkRange>
+		<baseDamRange>
+			<verticalDirection>0</verticalDirection>
+			<horizontalDirection>0</horizontalDirection>
+			<distance>40</distance>
+			<width>120</width>
+		</baseDamRange>
+		<baseRndDam>20</baseRndDam>
+		<baseMoveSpd>
+			<walk>80</walk>
+			<run>120</run>
+			<slowSwim>50</slowSwim>
+			<fastSwim>96</fastSwim>
+		</baseMoveSpd>
+		<baseBreath>100</baseBreath>
+		<baseSafeFall>333</baseSafeFall>
+		<collisionMale>
+			<radius>7.5</radius>
+			<height>22.8</height>
+		</collisionMale>
+		<collisionFemale>
+			<radius>6.5</radius>
+			<height>22.5</height>
+		</collisionFemale>
+	</class>
+</list>

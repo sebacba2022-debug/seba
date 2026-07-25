@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Skills custom de la clase Cronomante (ids 50000-50009).
+     Formato: L2J Mobius, data/stats/skills/. Cada skill tiene 3 niveles. -->
+<list xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../xsd/skills.xsd">
+
+	<!-- Nuke principal single target -->
+	<skill id="50000" toLevel="3" name="Distorsion Temporal">
+		<icon>icon.skill1235</icon>
+		<operateType>A1</operateType>
+		<targetType>ENEMY</targetType>
+		<affectScope>SINGLE</affectScope>
+		<isMagic>1</isMagic>
+		<magicLevel>
+			<value level="1">40</value>
+			<value level="2">52</value>
+			<value level="3">62</value>
+		</magicLevel>
+		<mpConsume>
+			<value level="1">35</value>
+			<value level="2">55</value>
+			<value level="3">78</value>
+		</mpConsume>
+		<castRange>900</castRange>
+		<effectRange>1400</effectRange>
+		<hitTime>4000</hitTime>
+		<reuseDelay>6000</reuseDelay>
+		<effects>
+			<effect name="MagicalAttack">
+				<power>
+					<value level="1">55</value>
+					<value level="2">78</value>
+					<value level="3">101</value>
+				</power>
+			</effect>
+		</effects>
+	</skill>
+
+	<!-- Buff de grupo: velocidad de ataque y casteo -->
+	<skill id="50001" toLevel="3" name="Acelerar">
+		<icon>icon.skill1204</icon>
+		<operateType>A2</operateType>
+		<targetType>SELF</targetType>
+		<affectScope>PARTY</affectScope>
+		<affectRange>1000</affectRange>
+		<isMagic>1</isMagic>
+		<magicLevel>
+			<value level="1">40</value>
+			<value level="2">52</value>
+			<value level="3">62</value>
+		</magicLevel>
+		<abnormalTime>1200</abnormalTime>
+		<mpConsume>60</mpConsume>
+		<hitTime>2500</hitTime>
+		<reuseDelay>4000</reuseDelay>
+		<effects>
+			<effect name="PhysicalAttackSpeed">
+				<amount>
+					<value level="1">15</value>
+					<value level="2">25</value>
+					<value level="3">33</value>
+				</amount>
+				<mode>PER</mode>
+			</effect>
+			<effect name="MagicalAttackSpeed">
+				<amount>
+					<value level="1">15</value>
+					<value level="2">25</value>
+					<value level="3">33</value>
+				</amount>
+				<mode>PER</mode>
+			</effect>
+		</effects>
+	</skill>
+
+	<!-- Debuff: reduce velocidad del enemigo -->
+	<skill id="50002" toLevel="3" name="Ralentizar">
+		<icon>icon.skill1160</icon>
+		<operateType>A2</operateType>
+		<targetType>ENEMY</targetType>
+		<affectScope>SINGLE</affectScope>
+		<isMagic>1</isMagic>
+		<isDebuff>true</isDebuff>
+		<magicLevel>
+			<value level="1">40</value>
+			<value level="2">52</value>
+			<value level="3">62</value>
+		</magicLevel>
+		<abnormalTime>30</abnormalTime>
+		<activateRate>80</activateRate>
+		<basicProperty>MEN</basicProperty>
+		<mpConsume>40</mpConsume>
+		<castRange>900</castRange>
+		<effectRange>1400</effectRange>
+		<hitTime>2000</hitTime>
+		<reuseDelay>8000</reuseDelay>
+		<effects>
+			<effect name="Speed">
+				<amount>
+					<value level="1">-20</value>
+					<value level="2">-30</value>
+					<value level="3">-40</value>
+				</amount>
+				<mode>PER</mode>
+			</effect>
+		</effects>
+	</skill>
+
+	<!-- Control: stun en área -->
+	<skill id="50003" toLevel="3" name="Paradoja">
+		<icon>icon.skill1170</icon>
+		<operateType>A2</operateType>
+		<targetType>ENEMY</targetType>
+		<affectScope>POINT_BLANK</affectScope>
+		<affectRange>300</affectRange>
+		<isMagic>1</isMagic>
+		<isDebuff>true</isDebuff>
+		<magicLevel>
+			<value level="1">44</value>
+			<value level="2">54</value>
+			<value level="3">64</value>
+		</magicLevel>
+		<abnormalType>STUN</abnormalType>
+		<abnormalTime>5</abnormalTime>
+		<activateRate>70</activateRate>
+		<basicProperty>MEN</basicProperty>
+		<mpConsume>70</mpConsume>
+		<hitTime>3000</hitTime>
+		<reuseDelay>30000</reuseDelay>
+		<effects>
+			<effect name="BlockActions" />
+		</effects>
+	</skill>
+
+	<!-- Curación fuerte ("volver el cuerpo a un estado anterior") -->
+	<skill id="50004" toLevel="3" name="Rebobinar">
+		<icon>icon.skill1217</icon>
+		<operateType>A1</operateType>
+		<targetType>TARGET</targetType>
+		<affectScope>SINGLE</affectScope>
+		<isMagic>1</isMagic>
+		<magicLevel>
+			<value level="1">42</value>
+			<value level="2">54</value>
+			<value level="3">64</value>
+		</magicLevel>
+		<mpConsume>
+			<value level="1">50</value>
+			<value level="2">75</value>
+			<value level="3">100</value>
+		</mpConsume>
+		<castRange>600</castRange>
+		<effectRange>1000</effectRange>
+		<hitTime>3500</hitTime>
+		<reuseDelay>5000</reuseDelay>
+		<effects>
+			<effect name="Heal">
+				<power>
+					<value level="1">380</value>
+					<value level="2">560</value>
+					<value level="3">750</value>
+				</power>
+			</effect>
+		</effects>
+	</skill>
+
+	<!-- Movilidad: blink corto instantáneo -->
+	<skill id="50005" toLevel="1" name="Salto Temporal">
+		<icon>icon.skill0628</icon>
+		<operateType>A1</operateType>
+		<targetType>SELF</targetType>
+		<affectScope>SINGLE</affectScope>
+		<isMagic>1</isMagic>
+		<magicLevel>46</magicLevel>
+		<mpConsume>45</mpConsume>
+		<hitTime>500</hitTime>
+		<reuseDelay>20000</reuseDelay>
+		<effects>
+			<effect name="Blink">
+				<angle>0</angle>
+				<range>250</range>
+			</effect>
+		</effects>
+	</skill>
+
+	<!-- DoT mágico -->
+	<skill id="50006" toLevel="3" name="Bucle Infinito">
+		<icon>icon.skill1343</icon>
+		<operateType>A2</operateType>
+		<targetType>ENEMY</targetType>
+		<affectScope>SINGLE</affectScope>
+		<isMagic>1</isMagic>
+		<isDebuff>true</isDebuff>
+		<magicLevel>
+			<value level="1">44</value>
+			<value level="2">54</value>
+			<value level="3">64</value>
+		</magicLevel>
+		<abnormalTime>15</abnormalTime>
+		<activateRate>90</activateRate>
+		<basicProperty>MEN</basicProperty>
+		<mpConsume>55</mpConsume>
+		<castRange>900</castRange>
+		<effectRange>1400</effectRange>
+		<hitTime>3000</hitTime>
+		<reuseDelay>10000</reuseDelay>
+		<effects>
+			<effect name="DamOverTime">
+				<power>
+					<value level="1">35</value>
+					<value level="2">55</value>
+					<value level="3">75</value>
+				</power>
+				<ticks>3</ticks>
+			</effect>
+		</effects>
+	</skill>
+
+	<!-- Escudo que absorbe daño -->
+	<skill id="50007" toLevel="3" name="Escudo de Eras">
+		<icon>icon.skill1417</icon>
+		<operateType>A2</operateType>
+		<targetType>SELF</targetType>
+		<affectScope>SINGLE</affectScope>
+		<isMagic>1</isMagic>
+		<magicLevel>
+			<value level="1">46</value>
+			<value level="2">56</value>
+			<value level="3">66</value>
+		</magicLevel>
+		<abnormalTime>60</abnormalTime>
+		<mpConsume>80</mpConsume>
+		<hitTime>2000</hitTime>
+		<reuseDelay>60000</reuseDelay>
+		<effects>
+			<effect name="AbsorbDamage">
+				<amount>
+					<value level="1">800</value>
+					<value level="2">1500</value>
+					<value level="3">2500</value>
+				</amount>
+			</effect>
+		</effects>
+	</skill>
+
+	<!-- Ultimate de control: root masivo -->
+	<skill id="50008" toLevel="2" name="Detener el Tiempo">
+		<icon>icon.skill1382</icon>
+		<operateType>A2</operateType>
+		<targetType>ENEMY</targetType>
+		<affectScope>POINT_BLANK</affectScope>
+		<affectRange>600</affectRange>
+		<isMagic>1</isMagic>
+		<isDebuff>true</isDebuff>
+		<magicLevel>
+			<value level="1">58</value>
+			<value level="2">70</value>
+		</magicLevel>
+		<abnormalType>ROOT_MAGICALLY</abnormalType>
+		<abnormalTime>8</abnormalTime>
+		<activateRate>85</activateRate>
+		<basicProperty>MEN</basicProperty>
+		<mpConsume>150</mpConsume>
+		<hitTime>4000</hitTime>
+		<reuseDelay>180000</reuseDelay>
+		<effects>
+			<effect name="Root" />
+		</effects>
+	</skill>
+
+	<!-- Ultimate de daño: nuke masivo en área -->
+	<skill id="50009" toLevel="2" name="Era del Caos">
+		<icon>icon.skill1486</icon>
+		<operateType>A1</operateType>
+		<targetType>ENEMY</targetType>
+		<affectScope>RANGE</affectScope>
+		<affectRange>400</affectRange>
+		<isMagic>1</isMagic>
+		<magicLevel>
+			<value level="1">60</value>
+			<value level="2">72</value>
+		</magicLevel>
+		<mpConsume>
+			<value level="1">180</value>
+			<value level="2">250</value>
+		</mpConsume>
+		<castRange>800</castRange>
+		<effectRange>1200</effectRange>
+		<hitTime>6000</hitTime>
+		<reuseDelay>120000</reuseDelay>
+		<effects>
+			<effect name="MagicalAttack">
+				<power>
+					<value level="1">140</value>
+					<value level="2">190</value>
+				</power>
+			</effect>
+		</effects>
+	</skill>
+
+</list>
